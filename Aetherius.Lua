@@ -1,122 +1,98 @@
--- [[ AETHERIUS NEXUS | V6 ELITE ]] --
--- UI: Orion (Fixed for Delta/Mobile)
+-- [[ AETHERIUS NEXUS | V7.5 ]] --
+-- Developed by: Aetherius Studios
+-- Inspiration: Quantum Onyx Layout
 
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
--- 1. SWIRL STARTUP ANIMATION
-local function StartBoot()
-    local boot = Instance.new("ScreenGui", game.CoreGui)
-    local frame = Instance.new("Frame", boot)
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-    
-    local txt = Instance.new("TextLabel", frame)
-    txt.Size = UDim2.new(1, 0, 1, 0)
-    txt.BackgroundTransparency = 1
-    txt.TextColor3 = Color3.fromRGB(150, 0, 255)
-    txt.Text = "🌀 BOOTING AETHERIUS NEXUS..."
-    txt.Font = Enum.Font.Code
-    txt.TextSize = 25
-
-    task.spawn(function()
-        for i = 1, 30 do
-            txt.Rotation = i * 12
-            task.wait(0.05)
-        end
-        boot:Destroy()
-    end)
-end
-StartBoot()
-
-local Window = OrionLib:MakeWindow({
-    Name = "Α | AETHERIUS NEXUS", 
-    HidePremium = false, 
-    SaveConfig = true, 
-    IntroEnabled = true,
-    IntroText = "AETHERIUS NEXUS PRO"
+-- 1. NEON STARTUP
+Fluent:Notify({
+    Title = "Aetherius Nexus",
+    Content = "🌀 Core Systems Initializing... Powered by Aetherius Studios.",
+    Duration = 5
 })
 
--- [[ AUTHENTICATION ]] --
-_G.Authorized = false
+-- 2. QUANTUM-STYLE WINDOW
+local Window = Fluent:CreateWindow({
+    Title = "AETHERIUS NEXUS | V7.5",
+    SubTitle = "by Aetherius Studios",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true, 
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+-- [[ AUTHENTICATION STATE ]] --
+local Authorized = false
 local FreeKey = "A3TH3R1USN3XUS77821X902L"
 local PremiumKey = "AETERNUM-ΧΑΟΣ-ΣΤΡΑΤΟΣ-99-VANGUARD"
 
-local AccessTab = Window:MakeTab({Name = "License", Icon = "rbxassetid://4483345998"})
+-- [[ TABS - SIDEBAR NAVIGATION ]] --
+local Tabs = {
+    License = Window:AddTab({ Title = "License", Icon = "lock" }),
+    Main = Window:AddTab({ Title = "Universal", Icon = "globe" }),
+    BloxFruits = Window:AddTab({ Title = "Blox Fruits", Icon = "swords" }),
+    Visuals = Window:AddTab({ Title = "Aetherius Vision", Icon = "eye" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
 
-AccessTab:AddTextbox({
-	Name = "Enter License Key",
-	Default = "",
-	TextDisappear = true,
-	Callback = function(Value)
-		_G.KeyInput = Value
-	end	  
+-- [[ 1. LICENSE TAB (NO ZACH STARK NAME) ]] --
+local KeyInput = ""
+Tabs.License:AddInput("InputKey", {
+    Title = "Enter License Key",
+    Placeholder = "Paste Key Here",
+    Callback = function(Value) KeyInput = Value end
 })
 
-AccessTab:AddButton({
-	Name = "Submit License",
-	Callback = function()
-        if _G.KeyInput == FreeKey or _G.KeyInput == PremiumKey then
-            _G.Authorized = true
-            OrionLib:MakeNotification({
-                Name = "SUCCESS",
-                Content = "Nexus Core Synchronized. Welcome Zach Stark.",
-                Time = 5
-            })
+Tabs.License:AddButton({
+    Title = "Submit License",
+    Description = "Verify your access status",
+    Callback = function()
+        if KeyInput == FreeKey or KeyInput == PremiumKey then
+            Authorized = true
+            Fluent:Notify({Title = "SUCCESS", Content = "Core Synchronized | Aetherius Studios", Duration = 5})
         else
-            OrionLib:MakeNotification({
-                Name = "FAILED",
-                Content = "Invalid License String. Try again.",
-                Time = 5
-            })
+            Fluent:Notify({Title = "FAILED", Content = "Invalid License String", Duration = 5})
         end
-	end
+    end
 })
 
-AccessTab:AddButton({
-	Name = "Get Free Key (Link)",
-	Callback = function()
-		setclipboard("https://work.ink/2qAU/759e261b-b989-45ef-a683-d6a35b4e2e30")
-        OrionLib:MakeNotification({Name = "System", Content = "Work.ink Link Copied!", Time = 3})
-	end
+Tabs.License:AddButton({
+    Title = "Get Key (Work.ink)",
+    Callback = function() setclipboard("https://work.ink/2qAU/759e261b-b989-45ef-a683-d6a35b4e2e30") end
 })
 
--- [[ PREMIUM SECTION ]] --
-local PremSec = AccessTab:AddSection({Name = "Aetherius Premium"})
-PremSec:AddButton({
-	Name = "Buy Premium (Latin/Greek Key)",
-	Callback = function()
-		setclipboard("https://sellix.io/AetheriusNexus")
-        OrionLib:MakeNotification({Name = "Store", Content = "Store Link Copied!", Time = 5})
-	end
-})
+-- [[ 2. UNIVERSAL (Daxion & Combat) ]] --
+local UniversalSec = Tabs.Main:AddSection("Daxion Performance")
+UniversalSec:AddToggle("AntiAFK", {Title = "Anti-AFK (Stay Online)", Default = false})
+UniversalSec:AddButton({Title = "Daxion Shield (Clear Logs)", Callback = function() end})
+UniversalSec:AddButton({Title = "Server Hop", Callback = function() end})
 
--- [[ VISUALS (REAL BILLBOARD ESP) ]] --
-local VisualsTab = Window:MakeTab({Name = "Aetherius Vision", Icon = "rbxassetid://4483345998"})
+-- [[ 3. BLOX FRUITS (Quantum Layout) ]] --
+local FarmSec = Tabs.BloxFruits:AddSection("Main Farm")
+FarmSec:AddToggle("AutoFarm", {Title = "Auto-Farm Level", Default = false})
+FarmSec:AddSlider("TweenSpeed", {Title = "Tweening Speed", Default = 250, Min = 100, Max = 500, Callback = function(v) end})
 
-VisualsTab:AddToggle({
-	Name = "Player ESP",
-	Default = false,
-	Callback = function(Value)
-        if not _G.Authorized then return end
-		_G.EspActive = Value
-        -- ESP Logic puts tags over heads
-	end
-})
-
--- [[ THE "Α" TOGGLE ICON ]] --
-local IconGUI = Instance.new("ScreenGui", game.CoreGui)
-local AlphaBtn = Instance.new("TextButton", IconGUI)
+-- [[ 4. THE CRYPTIC "Α" ICON (PURPLE & RED) ]] --
+local ToggleGUI = Instance.new("ScreenGui", game.CoreGui)
+local AlphaBtn = Instance.new("TextButton", ToggleGUI)
 AlphaBtn.Size = UDim2.new(0, 60, 0, 60)
 AlphaBtn.Position = UDim2.new(0, 15, 0.4, 0)
 AlphaBtn.Text = "Α"
-AlphaBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-AlphaBtn.TextColor3 = Color3.fromRGB(255, 0, 50) -- Red & Purple Hybrid
+AlphaBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+AlphaBtn.TextColor3 = Color3.fromRGB(150, 0, 255) -- Signature Purple
 AlphaBtn.TextSize = 40
 AlphaBtn.Font = Enum.Font.Greek
 Instance.new("UICorner", AlphaBtn).CornerRadius = UDim2.new(0, 15)
 
+local Stroke = Instance.new("UIStroke", AlphaBtn)
+Stroke.Color = Color3.fromRGB(255, 0, 50) -- Nexus Red Glow
+Stroke.Thickness = 2
+
 AlphaBtn.MouseButton1Click:Connect(function()
-    game.CoreGui.Orion.Enabled = not game.CoreGui.Orion.Enabled
+    -- Toggles Fluent UI
+    local core = game.CoreGui:FindFirstChild("Fluent") or game.CoreGui:FindFirstChild("ScreenGui")
+    if core then core.Enabled = not core.Enabled end
 end)
 
-OrionLib:Init()
+Window:SelectTab(1)
