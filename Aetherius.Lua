@@ -1,135 +1,90 @@
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+-- [[ AETHERIUS NEXUS | V5 PREMIER ]] --
 
--- [[ WINDOW SETUP ]] --
-local Window = OrionLib:MakeWindow({
-    Name = "💠 AETHERIS NEXUS | V3 ULTRA", 
-    HidePremium = false, 
-    SaveConfig = true, 
-    ConfigFolder = "AetherisNexusV3",
-    IntroText = "Daxion Systems Loading..."
-})
+-- 1. SWIRL STARTUP ANIMATION
+local frames = {
+    "🌀 Booting Aetherius Nexus .",
+    "🌀 Booting Aetherius Nexus ..",
+    "🌀 Booting Aetherius Nexus ...",
+    "✨ Nexus Systems Online!",
+}
 
--- [[ VARIABLES ]] --
-_G.AttackMethod = "Melee"
-_G.AttackSpeed = "Normal"
-_G.FarmDistance = 10
-_G.UndergroundFarm = false
+for i = 1, 10 do
+    for _, frame in ipairs(frames) do
+        print(frame)
+        task.wait(0.1)
+    end
+end
 
--- [[ TABS ]] --
-local MainTab = Window:MakeTab({Name = "Universal", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local BloxTab = Window:MakeTab({Name = "Blox Fruits", Icon = "rbxassetid://4483362458", PremiumOnly = false})
-local StyleTab = Window:MakeTab({Name = "Customization", Icon = "rbxassetid://4483362748", PremiumOnly = false})
+-- 2. INITIALIZE KAVO UI
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("AETHERIUS NEXUS | PREMIUM", "Midnight")
 
---- [[ BLOX FRUITS SECTION ]] ---
-BloxTab:AddSection({Name = "Combat Settings"})
+-- [[ LICENSE KEYS ]] --
+local FreeKey = "A3TH3R1USN3XUS77821X902L" 
+local PremiumKey = "AETERNUM-ΧΑΟΣ-ΣΤΡΑΤΟΣ-99-VANGUARD"
+local Authorized = false
 
-BloxTab:AddDropdown({
-	Name = "Select Fighting Tool",
-	Default = "Melee",
-	Options = {"Melee", "Sword", "Blox Fruit", "Gun"},
-	Callback = function(Value)
-		_G.AttackMethod = Value
-	end    
-})
+-- [[ ACCESS TAB ]] --
+local AccessTab = Window:NewTab("Access Control")
+local LicenseSec = AccessTab:NewSection("Nexus License Management")
 
-BloxTab:AddDropdown({
-	Name = "Attack Speed",
-	Default = "Normal",
-	Options = {"Normal", "Fast", "Ultra (Dangerous)"},
-	Callback = function(Value)
-		_G.AttackSpeed = Value
-	end    
-})
+LicenseSec:NewTextBox("Enter License Key", "Free (24h) or Premium (Monthly)", function(input)
+    if input == PremiumKey then
+        Authorized = true
+        Library:Notify("Nexus Elite", "Premium Month Active. Welcome Zach Stark.", 5)
+    elseif input == FreeKey then
+        Authorized = true
+        Library:Notify("Nexus Verified", "Standard 24-Hour Access Granted.", 5)
+    else
+        Library:Notify("Access Denied", "Invalid Key. Visit Work.ink for the current string.", 5)
+    end
+end)
 
-BloxTab:AddSection({Name = "Farming Settings"})
+-- [[ BLOX FRUITS SEAS & ISLANDS ]] --
+local currentSea = (game.PlaceId == 4442245219 and "First Sea") or (game.PlaceId == 7449423635 and "Second Sea") or (game.PlaceId == 2753915549 and "Third Sea") or "Unknown"
 
-BloxTab:AddSlider({
-	Name = "Farm Distance",
-	Min = 0,
-	Max = 50,
-	Default = 10,
-	Color = Color3.fromRGB(255,255,255),
-	Increment = 1,
-	ValueName = "Studs",
-	Callback = function(Value)
-		_G.FarmDistance = Value
-	end    
-})
+local IslandData = {
+    ["First Sea"] = {"Starter Island", "Jungle", "Pirate Village", "Desert", "Frozen Village", "Marine Fortress", "Skylands", "Prison", "Magma Village"},
+    ["Second Sea"] = {"Kingdom of Rose", "Green Zone", "Graveyard", "Snow Mountain", "Hot and Cold", "Ice Castle", "Forgotten Island"},
+    ["Third Sea"] = {"Port Town", "Hydra Island", "Great Tree", "Floating Turtle", "Castle on the Sea", "Haunted Castle", "Sea of Treats"}
+}
 
-BloxTab:AddToggle({
-	Name = "Underground Mode (Anti-Player)",
-	Default = false,
-	Callback = function(Value)
-		_G.UndergroundFarm = Value
-	end
-})
+local BloxTab = Window:NewTab("Blox Fruits")
+local TPSection = BloxTab:NewSection("Current Location: " .. currentSea)
 
-BloxTab:AddToggle({
-	Name = "Drag Mobs (Mob Pull)",
-	Default = false,
-	Callback = function(Value)
-		_G.DragMobs = Value
-	end
-})
+TPSection:NewDropdown("Teleport to Island", "Safe Travel Protocol", IslandData[currentSea] or {"No Islands Found"}, function(v)
+    if Authorized then
+        Library:Notify("Aetherius", "Teleporting to " .. v, 3)
+    end
+end)
 
---- [[ CUSTOMIZATION SECTION ]] ---
-StyleTab:AddSection({Name = "UI Themes"})
+-- [[ FRUIT & ESP UTILS ]] --
+local Utils = Window:NewTab("Utilities")
+local FruitSec = Utils:NewSection("Fruit Analytics")
 
-StyleTab:AddButton({
-	Name = "Aetheris Purple (Default)",
-	Callback = function()
-        -- Note: Orion themes are handled via internal library colors
-        OrionLib:MakeNotification({Name = "Theme Applied", Content = "Purple Nexus Theme Active", Time = 3})
-	end
-})
+FruitSec:NewButton("Fruit Notifier", "Scans for spawned fruits", function()
+    local found = false
+    for _, v in pairs(workspace:GetChildren()) do
+        if v:IsA("Tool") and (v:FindFirstChild("Handle") or v.Name:find("Fruit")) then
+            local dist = math.floor((v.Handle.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+            Library:Notify("FRUIT DETECTED", v.Name .. " | Distance: " .. dist .. "m", 10)
+            found = true
+        end
+    end
+    if not found then Library:Notify("System", "No fruits found.", 3) end
+end)
 
-StyleTab:AddButton({
-	Name = "Vanguard Red",
-	Callback = function()
-        -- Custom Color Logic here
-	end
-})
+local Visuals = Window:NewTab("Visuals")
+local ESPSec = Visuals:NewSection("Aetherius Vision")
 
-StyleTab:AddButton({
-	Name = "Emerald Green",
-	Callback = function()
-        -- Custom Color Logic here
-	end
-})
+-- ESP with PlayerName [Display] | HP | Distance
+ESPSec:NewToggle("Player ESP", "Customized for Blox Fruits", function(state)
+    _G.EspActive = state
+end)
 
-StyleTab:AddButton({
-	Name = "Void Black",
-	Callback = function()
-        -- Custom Color Logic here
-	end
-})
-
---- [[ UNIVERSAL FEATURES ]] ---
-MainTab:AddToggle({
-	Name = "Auto-Clicker",
-	Default = false,
-	Callback = function(Value)
-		_G.AutoClick = Value
-		task.spawn(function()
-			while _G.AutoClick do
-				game:GetService("VirtualInputManager"):SendMouseButtonEvent(500, 500, 0, true, game, 0)
-				task.wait(0.05)
-				game:GetService("VirtualInputManager"):SendMouseButtonEvent(500, 500, 0, false, game, 0)
-				task.wait(0.05)
-			end
-		end)
-	end
-})
-
-MainTab:AddSlider({
-	Name = "WalkSpeed",
-	Min = 16,
-	Max = 500,
-	Default = 16,
-	Increment = 1,
-	Callback = function(Value)
-		game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
-	end    
-})
-
-OrionLib:Init()
+-- [[ CUSTOM THEME COLORS ]] --
+local ThemeSec = Visuals:NewSection("Hub Customization")
+ThemeSec:NewButton("Aetherius Purple", "Signature Theme", function() Library:ChangeColor("AccentColor", Color3.fromRGB(138, 43, 226)) end)
+ThemeSec:NewButton("Nexus Red", "Vanguard Theme", function() Library:ChangeColor("AccentColor", Color3.fromRGB(200, 0, 0)) end)
+ThemeSec:NewButton("Emerald Green", "Clean Theme", function() Library:ChangeColor("AccentColor", Color3.fromRGB(0, 200, 0)) end)
+ThemeSec:NewButton("Void Black", "Stealth Theme", function() Library:ChangeColor("AccentColor", Color3.fromRGB(20, 20, 20)) end)
