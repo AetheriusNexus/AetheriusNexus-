@@ -1,4 +1,3 @@
-```lua
 -- [[ AETHERIUS NEXUS | V15 ]] --
 -- Rewritten & Fixed by Aetherius Studios
 -- Library: Fluent UI
@@ -1295,4 +1294,3 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end
     _G.FlyEnabled = false -- Reset fly on death
 end)
-```
