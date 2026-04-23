@@ -1,6 +1,6 @@
 -- [[ AETHERIUS NEXUS | V14 ]] --
 -- Rebranded: Aetherius Studios
--- Discord: https://discord.gg/Wzqd73qPDC
+-- Discord: https://discord.gg/gNfeVeA6cs
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local players = game:GetService("Players")
@@ -30,7 +30,7 @@ local LicenseTab = Window:AddTab({ Title = "Authentication", Icon = "lock" })
 
 LicenseTab:AddParagraph({
     Title = "Secure Authentication System",
-    Content = "Join our Discord for support: https://discord.gg/Wzqd73qPDC"
+    Content = "Join our Discord for support: https://discord.gg/gNfeVeA6cs"
 })
 
 LicenseTab:AddInput("AuthInput", {
