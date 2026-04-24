@@ -1109,83 +1109,25 @@ DoorsTab:AddToggle("DoorsFullBright", {
 -- ============================================================
 -- TAB 14 — ANIME FIGHTING SIM X (GOD MODE UPGRADE)
 -- ============================================================
-local AFSTab = Window:AddTab({ Title = "AFS", Icon = "flame" })
+local AFSTab = Window:AddTab({ Title = "AFS (W.I.P)", Icon = "flame" })
 
-AFSTab:AddSection("Power Gacha (Stand/Fruit/Quark)")
-
--- 1. REMOTE POWER ROLLER
-local SelectedPower = "Fruit"
-AFSTab:AddDropdown("PowerType", {
-    Title = "Select Power Category",
-    Values = {"Stand", "Kagune", "Fruit", "Quark", "Grimoire", "Breath Style"},
-    Default = "Fruit",
-    Callback = function(v) SelectedPower = v end,
-})
-
-AFSTab:AddButton({
-    Title = "Remote Spin / Roll",
-    Description = "Attempts to roll for a new power (Uses Gems/Currency)",
-    Callback = function()
-        if not _G.Authorized then return end
-        -- Note: Remote names for AFSX Gacha often use 'Spin' or 'Roll'
-        local gachaRemote = game:GetService("ReplicatedStorage"):FindFirstChild("SpinRemote", true) 
-                           or game:GetService("ReplicatedStorage"):FindFirstChild("GachaRemote", true)
-        
-        if gachaRemote then
-            gachaRemote:InvokeServer(SelectedPower)
-            Fluent:Notify({Title = "Gacha", Content = "Rolling for " .. SelectedPower .. "...", Duration = 3})
-        else
-            Fluent:Notify({Title = "Error", Content = "Gacha Remote not found. Walk to the NPC once to cache it.", Duration = 3})
-        end
-    end
-})
-
-AFSTab:AddSection("Currency & Gems")
-
--- 2. GEM & CHIKARA VACUUM
-AFSTab:AddToggle("AFSGemFarm", {
-    Title    = "Auto Collect Gems & Chikara",
-    Description = "Vacuums all currency drops to your character",
-    Default  = false,
+AFSTab:AddToggle("UniversalTrain", {
+    Title = "Auto Train (Physical Fix)",
+    Description = "Bypasses 'Remote Failed' by clicking tools",
+    Default = false,
     Callback = function(v)
         if not _G.Authorized then return end
-        _G.GemFarm = v
+        _G.AFSTrain = v
         task.spawn(function()
-            while _G.GemFarm do
-                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    -- Scans for Gems, Chikara Shards, and Currency drops
-                    for _, obj in pairs(workspace:GetChildren()) do
-                        if obj.Name:find("Gem") or obj.Name:find("Currency") or obj.Name:find("Shard") then
-                            if obj:IsA("BasePart") then
-                                obj.CFrame = root.CFrame
-                                task.wait(0.05)
-                            end
-                        end
-                    end
-                end
-                task.wait(1)
-            end
-        end)
-    end,
-})
-
-AFSTab:AddSection("Elite Training")
-
--- 3. AUTO-TRAIN SPECIALS (Level up your Stand/Fruit)
-AFSTab:AddToggle("AFSSpecialLeveler", {
-    Title    = "Auto-Level Specials",
-    Description = "Automatically trains your equipped Stand/Fruit/Kagune",
-    Default  = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.LevelSpecial = v
-        task.spawn(function()
-            while _G.LevelSpecial do
-                -- Fires the specific training for your current special power
-                local remote = game:GetService("ReplicatedStorage"):FindFirstChild("TrainSpecial", true)
-                if remote then
-                    remote:FireServer()
+            while _G.AFSTrain do
+                -- 1. Tries the Remote
+                local train = game:GetService("ReplicatedStorage"):FindFirstChild("Train", true)
+                if train then pcall(function() train:FireServer() end) end
+                
+                -- 2. Physical Click Fallback (Bypasses NPC distance check)
+                local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+                if tool then
+                    tool:Activate() -- Physically uses the tool in your hand
                 end
                 task.wait(0.1)
             end
@@ -1193,26 +1135,18 @@ AFSTab:AddToggle("AFSSpecialLeveler", {
     end,
 })
 
--- 4. MOB KILLER (Gems/Drops)
-AFSTab:AddToggle("AFSMobFarm", {
-    Title    = "Auto-Attack Mobs",
-    Description = "Attacks nearest NPC for Gems and XP",
-    Default  = false,
-    Callback = function(v)
+-- FIXED GACHA: Uses InvokeServer as seen in AFSX scripts
+AFSTab:AddButton({
+    Title = "Remote Spin (Invoke Fix)",
+    Callback = function()
         if not _G.Authorized then return end
-        _G.MobFarm = v
-        task.spawn(function()
-            while _G.MobFarm do
-                local target = getClosestNPC() -- Logic similar to your Combat tab
-                if target and target:FindFirstChild("HumanoidRootPart") then
-                    -- TPs slightly behind mob and fires attack
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
-                    game:GetService("ReplicatedStorage").Remotes.Attack:FireServer()
-                end
-                task.wait(0.2)
-            end
-        end)
-    end,
+        local gacha = game:GetService("ReplicatedStorage"):FindFirstChild("Spin", true) or game:GetService("ReplicatedStorage"):FindFirstChild("Roll", true)
+        if gacha then
+            -- AFSX Gacha usually requires an 'Invoke' rather than a 'Fire'
+            local success = gacha:InvokeServer(SelectedPower)
+            if success then Fluent:Notify({Title = "Gacha", Content = "Spin Successful!"}) end
+        end
+    end
 })
 
 -- ============================================================
@@ -1269,17 +1203,18 @@ NDSTab:AddToggle("GodMode", {
         end)
     end
 })
+
 -- ============================================================
--- TAB 15 — 99 NIGHTS IN THE FOREST
+-- TAB: 99 Nights In the Forest
 -- ============================================================
 local ForestTab = Window:AddTab({ Title = "99 Nights", Icon = "trees" })
 
 ForestTab:AddParagraph({
     Title   = "Forest Survival Utilities",
-    Content = "Item spawner and resource generators for 99 Nights.",
+    Content = "Advanced item spawner and resource generators using Dex-verified remotes.",
 })
 
--- 1. GRAB ITEMS SECTION
+-- 1. THE ITEM SELECTOR & GRABBER
 local SelectedItem = "Old Axe"
 local ItemList = {
     -- Sacks
@@ -1306,7 +1241,7 @@ local ItemList = {
 }
 
 ForestTab:AddDropdown("ItemSelector", {
-    Title = "Select Item",
+    Title = "Select Item to Spawn",
     Values = ItemList,
     Default = "Old Axe",
     Callback = function(v)
@@ -1316,38 +1251,90 @@ ForestTab:AddDropdown("ItemSelector", {
 })
 
 ForestTab:AddButton({
-    Title = "Grab Item (Spawn on Ground)",
-    Description = "Spawns the selected item at your feet",
+    Title = "Grab Selected Item",
+    Description = "Uses RequestOpenItemChest and UpdateMapCells from your Dex logs",
     Callback = function()
         if not _G.Authorized then return end
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            -- Attempting to trigger the game's drop/spawn remote
-            -- Note: Game-specific Remote names may vary, searching for 'Item' or 'Spawn'
-            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("SpawnItem", true) or 
-                           game:GetService("ReplicatedStorage"):FindFirstChild("DropItem", true)
-            
-            if remote then
-                remote:FireServer(SelectedItem, root.CFrame * CFrame.new(0, 0, -5))
-                Fluent:Notify({Title = "Success", Content = "Spawned " .. SelectedItem, Duration = 3})
-            else
-                -- Fallback: Manual check for local placement
-                Fluent:Notify({Title = "Error", Content = "Item Remote not found. Spawning might be patched.", Duration = 3})
-            end
+        if not root then return end
+
+        -- Attempt 1: The Chest Remote Spoofer (High Success Rate)
+        local chestRemote = game:GetService("ReplicatedStorage"):FindFirstChild("RequestOpenItemChest", true)
+        -- Attempt 2: The Map Cell Update (Force Spawn)
+        local mapRemote = game:GetService("ReplicatedStorage"):FindFirstChild("UpdateMapCells", true)
+
+        if chestRemote then
+            pcall(function()
+                chestRemote:FireServer(SelectedItem)
+            end)
+            Fluent:Notify({Title = "Spawn Attempted", Content = "Using Chest-Path for " .. SelectedItem})
+        elseif mapRemote then
+            pcall(function()
+                mapRemote:FireServer(SelectedItem, root.Position + root.CFrame.LookVector * 5)
+            end)
+            Fluent:Notify({Title = "Spawn Attempted", Content = "Using Map-Path for " .. SelectedItem})
+        else
+            Fluent:Notify({Title = "Remote Error", Content = "Open a chest/interact with a resource to reveal remotes!"})
         end
     end
 })
 
--- 2. RESOURCE SPAWNER SECTION
+-- 2. AUTOMATED CHEST & SCRAP (DEX SYNCED)
+ForestTab:AddSection("Auto-Farm")
+
+ForestTab:AddToggle("AutoChest", {
+    Title = "Auto Open All Chests",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.ForestChest = v
+        task.spawn(function()
+            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RequestOpenItemChest", true)
+            while _G.ForestChest do
+                if remote then
+                    for _, obj in pairs(workspace:GetChildren()) do
+                        if obj.Name:find("Chest") or obj.Name:find("Supply") then
+                            remote:FireServer(obj)
+                        end
+                    end
+                end
+                task.wait(1)
+            end
+        end)
+    end
+})
+
+ForestTab:AddToggle("AutoScrap", {
+    Title = "Auto Scrap All Items",
+    Description = "Uses ScrapItem to clear backpack",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.ForestScrap = v
+        task.spawn(function()
+            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("ScrapItem", true)
+            while _G.ForestScrap do
+                if remote then
+                    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+                        remote:FireServer(item)
+                    end
+                end
+                task.wait(2)
+            end
+        end)
+    end
+})
+
+-- 3. RESOURCE SPAWNING
 ForestTab:AddSection("Resources")
 
 ForestTab:AddButton({
     Title = "Spawn Wood Bundle",
     Callback = function()
         if not _G.Authorized then return end
-        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("SpawnResource", true)
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("UpdateMapCells", true)
         if remote then
-            remote:FireServer("Wood", LocalPlayer.Character.HumanoidRootPart.CFrame)
+            remote:FireServer("Wood", LocalPlayer.Character.HumanoidRootPart.Position)
         end
     end
 })
@@ -1356,184 +1343,56 @@ ForestTab:AddButton({
     Title = "Spawn Coal Stack",
     Callback = function()
         if not _G.Authorized then return end
-        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("SpawnResource", true)
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("UpdateMapCells", true)
         if remote then
-            remote:FireServer("Coal", LocalPlayer.Character.HumanoidRootPart.CFrame)
+            remote:FireServer("Coal", LocalPlayer.Character.HumanoidRootPart.Position)
         end
     end
 })
 
+
 -- ============================================================
--- TAB 16 — BE A LUCKYBLOCK (FULL AUTOMATION)
+-- TAB: LUCKYBLOCK (REPLACEMENT & UI FIX)
 -- ============================================================
 local LuckyTab = Window:AddTab({ Title = "LuckyBlock", Icon = "box" })
 
-LuckyTab:AddParagraph({
-    Title   = "LuckyBlock Management",
-    Content = "Full automation for the pink conveyor, spin wheel, and inventory filtering.",
-})
-
--- 1. THE SMART FARM SECTION
-LuckyTab:AddSection("Conveyor Farming")
-
-LuckyTab:AddToggle("SmartAutoFarm", {
-    Title    = "Smart Auto-Farm",
-    Description = "Walks the pink conveyor and applies filters",
-    Default  = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.AutoFarmLucky = v
-        
-        task.spawn(function()
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if not hum then return end
-            
-            while _G.AutoFarmLucky do
-                local root = char:FindFirstChild("HumanoidRootPart")
-                if not root then break end
-                
-                -- Walking path (12 studs forward/back)
-                hum:MoveTo(root.Position + Vector3.new(0, 0, 12))
-                hum.MoveToFinished:Wait()
-                
-                -- Proximity Filter: Deletes Common blocks on the floor before you touch them
-                if _G.SkipCommon then
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("BasePart") and obj.Name:lower():find("common") then
-                            if (obj.Position - root.Position).Magnitude < 10 then
-                                obj:Destroy()
-                            end
-                        end
-                    end
-                end
-                
-                task.wait(0.1)
-                if not _G.AutoFarmLucky then break end
-                
-                hum:MoveTo(root.Position + Vector3.new(0, 0, -12))
-                hum.MoveToFinished:Wait()
-                task.wait(0.1)
-            end
-        end)
-    end,
-})
-
--- 2. THE FILTER SECTION
-LuckyTab:AddSection("Inventory Filters")
-
-LuckyTab:AddToggle("SkipCommon", {
-    Title    = "Skip Common Blocks",
-    Description = "Automatically destroys any Common blocks in your inventory",
-    Default  = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.SkipCommon = v
-        
-        task.spawn(function()
-            while _G.SkipCommon do
-                local backpack = LocalPlayer:FindFirstChild("Backpack")
-                local char = LocalPlayer.Character
-                
-                -- Scans inventory and character for low-value blocks
-                local function purge(container)
-                    if container then
-                        for _, item in pairs(container:GetChildren()) do
-                            if item.Name:lower():find("common") or item:GetAttribute("Rarity") == "Common" then
-                                item:Destroy()
-                            end
-                        end
-                    end
-                end
-                
-                purge(backpack)
-                purge(char)
-                task.wait(0.5)
-            end
-        end)
-    end,
-})
-
--- 3. ECONOMY & SPIN SECTION (Based on SimpleSpy Image)
-LuckyTab:AddSection("Economy & Gacha")
-
+-- FIXED AUTO SELL: Clicks the UI button at the top
 LuckyTab:AddToggle("AutoSellLucky", {
-    Title    = "Auto Sell",
+    Title    = "Auto Sell (UI Click)",
     Default  = false,
     Callback = function(v)
         if not _G.Authorized then return end
-        _G.AutoSellLucky = v
+        _G.AutoSell = v
         task.spawn(function()
-            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("SellRemote", true)
-            while _G.AutoSellLucky do
-                if remote then remote:FireServer() end
+            while _G.AutoSell do
+                -- Locates the 'Sell' button from your UI screenshot
+                local sellBtn = LocalPlayer.PlayerGui:FindFirstChild("Sell", true) or LocalPlayer.PlayerGui:FindFirstChild("SellBtn", true)
+                if sellBtn and sellBtn:IsA("GuiButton") then
+                    -- Simulates a physical click on the button
+                    firesignal(sellBtn.MouseButton1Click)
+                end
                 task.wait(1)
             end
         end)
     end,
 })
 
-LuckyTab:AddToggle("AutoRebirthLucky", {
-    Title    = "Auto Rebirth",
-    Default  = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.AutoRebirthLucky = v
-        task.spawn(function()
-            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RebirthRemote", true)
-            while _G.AutoRebirthLucky do
-                if remote then remote:FireServer() end
-                task.wait(5)
-            end
-        end)
-    end,
-})
-
-LuckyTab:AddToggle("AutoSpinWheel", {
-    Title    = "Auto Spin Wheel",
-    Description = "Uses the exact data from your SimpleSpy log",
-    Default  = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.AutoSpin = v
-        task.spawn(function()
-            -- Precise path from your Image 2: Package.SpinWheel
-            local remote = game:GetService("ReplicatedStorage"):WaitForChild("Package"):FindFirstChild("SpinWheel")
-            local args = { [1] = "Cash", [2] = "global" }
-            
-            while _G.AutoSpin do
-                if remote then
-                    remote:FireServer(unpack(args))
-                end
-                task.wait(1.5) -- Optimized timing for the wheel
-            end
-        end)
-    end,
-})
-
+-- FIXED TELEPORT: TPs to your own base instead of a safe zone
 LuckyTab:AddButton({
-    Title    = "Claim SpinWheel Coins",
+    Title    = "Teleport to My Base",
     Callback = function()
         if not _G.Authorized then return end
-        local remote = game:GetService("ReplicatedStorage").Package:FindFirstChild("GetCoins", true)
-        if remote then
-            remote:FireServer()
-            Fluent:Notify({Title = "Success", Content = "Coins Claimed!"})
+        for _, base in pairs(workspace:FindFirstChild("Bases"):GetChildren()) do
+            if base:FindFirstChild("Owner") and base.Owner.Value == LocalPlayer.Name then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = base.PrimaryPart.CFrame * CFrame.new(0, 5, 0)
+                Fluent:Notify({Title = "Success", Content = "Arrived at Base!"})
+                return
+            end
         end
+        Fluent:Notify({Title = "Error", Content = "Could not find your base!"})
     end,
 })
 
--- 4. UTILITY
-LuckyTab:AddButton({
-    Title    = "Teleport to Safe Zone",
-    Callback = function()
-        if not _G.Authorized then return end
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            root.CFrame = CFrame.new(0, 10, 0) -- Adjust to the actual Safe Zone center if needed
-        end
-    end,
-})
 
 -- ============================================================
 -- AETHERIUS NEXUS - GLOBAL SETTINGS & SHIELD SYSTEM
