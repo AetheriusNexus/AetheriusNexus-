@@ -1,6 +1,16 @@
 -- [[ AETHERIUS NEXUS | V15 ]] --
 -- Rewritten & Fixed by Aetherius Studios
 -- Library: Fluent UI
+_G.Authorized = false
+local MarketplaceService = game:GetService("MarketplaceService")
+local Player = game.Players.LocalPlayer
+
+local _, owns = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(Player.UserId, 1808462490) end)
+if owns then _G.Authorized = true end
+
+if not _G.Authorized then task.wait(2) end 
+
+-- The rest of your code follows below...
 
 -- ============================================================
 -- SERVICES & CORE VARIABLES
