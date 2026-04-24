@@ -1161,37 +1161,34 @@ NDSTab:AddParagraph({
     Content = "Anti-damage, safe spot teleport, and god mode.",
 })
 
-NDSTab:AddButton({
-    Title    = "TP to Safe Spot (Top of Map)",
-    Callback = function()
-        if not requireAuth() then return end
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(0, 9999, 0)
-        end
-    end,
-})
-
-NDSTab:AddToggle("NDSAntiDmg", {
-    Title    = "Anti Damage",
-    Default  = false,
-    Callback = function(v)
-        if v and not requireAuth() then return end
-        if v then
+    NDSTab:AddButton({
+        Title = "TP to Skybase (Safe)",
+        Callback = function()
             local char = LocalPlayer.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    hum:GetPropertyChangedSignal("Health"):Connect(function()
-                        if v and hum.Health < hum.MaxHealth then
-                            hum.Health = hum.MaxHealth
-                        end
-                    end)
-                end
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(0, 500, 0)
+                local p = Instance.new("Part", Workspace)
+                p.Size, p.CFrame, p.Anchored = Vector3.new(20, 1, 20), CFrame.new(0, 495, 0), true
             end
         end
-    end,
-})
+    })
+
+    NDSTab:AddToggle("GodMode", {
+        Title = "Anti-Damage",
+        Callback = function(v)
+            _G.GodMode = v
+            while _G.GodMode do
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                    LocalPlayer.Character.Humanoid.Health = 100
+                    if LocalPlayer.Character:FindFirstChild("FallDamage") then 
+                        LocalPlayer.Character.FallDamage:Destroy() 
+                    end
+                end
+                task.wait(0.1)
+            end
+        end
+    })
+end)
 
 -- ============================================================
 -- TAB 15 — SETTINGS
