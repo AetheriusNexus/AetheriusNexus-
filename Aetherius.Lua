@@ -1107,7 +1107,7 @@ DoorsTab:AddToggle("DoorsFullBright", {
 
 
 -- ============================================================
--- TAB 13 — ANIME FIGHTING SIMULATOR X
+-- TAB 13 — Amime Fighting Simulator (FIXED)
 -- ============================================================
 local AFSTab = Window:AddTab({ Title = "AFSX", Icon = "flame" })
 
@@ -1136,6 +1136,7 @@ AFSTab:AddToggle("AFSAutoTrain", {
         end
     end,
 })
+
 
 -- ============================================================
 -- TAB 14 — NATURAL DISASTER SURVIVAL (FIXED)
@@ -1283,6 +1284,178 @@ ForestTab:AddButton({
             remote:FireServer("Coal", LocalPlayer.Character.HumanoidRootPart.CFrame)
         end
     end
+})
+
+-- ============================================================
+-- TAB 16 — BE A LUCKYBLOCK (FULL AUTOMATION)
+-- ============================================================
+local LuckyTab = Window:AddTab({ Title = "LuckyBlock", Icon = "box" })
+
+LuckyTab:AddParagraph({
+    Title   = "LuckyBlock Management",
+    Content = "Full automation for the pink conveyor, spin wheel, and inventory filtering.",
+})
+
+-- 1. THE SMART FARM SECTION
+LuckyTab:AddSection("Conveyor Farming")
+
+LuckyTab:AddToggle("SmartAutoFarm", {
+    Title    = "Smart Auto-Farm",
+    Description = "Walks the pink conveyor and applies filters",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.AutoFarmLucky = v
+        
+        task.spawn(function()
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if not hum then return end
+            
+            while _G.AutoFarmLucky do
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if not root then break end
+                
+                -- Walking path (12 studs forward/back)
+                hum:MoveTo(root.Position + Vector3.new(0, 0, 12))
+                hum.MoveToFinished:Wait()
+                
+                -- Proximity Filter: Deletes Common blocks on the floor before you touch them
+                if _G.SkipCommon then
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("BasePart") and obj.Name:lower():find("common") then
+                            if (obj.Position - root.Position).Magnitude < 10 then
+                                obj:Destroy()
+                            end
+                        end
+                    end
+                end
+                
+                task.wait(0.1)
+                if not _G.AutoFarmLucky then break end
+                
+                hum:MoveTo(root.Position + Vector3.new(0, 0, -12))
+                hum.MoveToFinished:Wait()
+                task.wait(0.1)
+            end
+        end)
+    end,
+})
+
+-- 2. THE FILTER SECTION
+LuckyTab:AddSection("Inventory Filters")
+
+LuckyTab:AddToggle("SkipCommon", {
+    Title    = "Skip Common Blocks",
+    Description = "Automatically destroys any Common blocks in your inventory",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.SkipCommon = v
+        
+        task.spawn(function()
+            while _G.SkipCommon do
+                local backpack = LocalPlayer:FindFirstChild("Backpack")
+                local char = LocalPlayer.Character
+                
+                -- Scans inventory and character for low-value blocks
+                local function purge(container)
+                    if container then
+                        for _, item in pairs(container:GetChildren()) do
+                            if item.Name:lower():find("common") or item:GetAttribute("Rarity") == "Common" then
+                                item:Destroy()
+                            end
+                        end
+                    end
+                end
+                
+                purge(backpack)
+                purge(char)
+                task.wait(0.5)
+            end
+        end)
+    end,
+})
+
+-- 3. ECONOMY & SPIN SECTION (Based on SimpleSpy Image)
+LuckyTab:AddSection("Economy & Gacha")
+
+LuckyTab:AddToggle("AutoSellLucky", {
+    Title    = "Auto Sell",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.AutoSellLucky = v
+        task.spawn(function()
+            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("SellRemote", true)
+            while _G.AutoSellLucky do
+                if remote then remote:FireServer() end
+                task.wait(1)
+            end
+        end)
+    end,
+})
+
+LuckyTab:AddToggle("AutoRebirthLucky", {
+    Title    = "Auto Rebirth",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.AutoRebirthLucky = v
+        task.spawn(function()
+            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RebirthRemote", true)
+            while _G.AutoRebirthLucky do
+                if remote then remote:FireServer() end
+                task.wait(5)
+            end
+        end)
+    end,
+})
+
+LuckyTab:AddToggle("AutoSpinWheel", {
+    Title    = "Auto Spin Wheel",
+    Description = "Uses the exact data from your SimpleSpy log",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.AutoSpin = v
+        task.spawn(function()
+            -- Precise path from your Image 2: Package.SpinWheel
+            local remote = game:GetService("ReplicatedStorage"):WaitForChild("Package"):FindFirstChild("SpinWheel")
+            local args = { [1] = "Cash", [2] = "global" }
+            
+            while _G.AutoSpin do
+                if remote then
+                    remote:FireServer(unpack(args))
+                end
+                task.wait(1.5) -- Optimized timing for the wheel
+            end
+        end)
+    end,
+})
+
+LuckyTab:AddButton({
+    Title    = "Claim SpinWheel Coins",
+    Callback = function()
+        if not _G.Authorized then return end
+        local remote = game:GetService("ReplicatedStorage").Package:FindFirstChild("GetCoins", true)
+        if remote then
+            remote:FireServer()
+            Fluent:Notify({Title = "Success", Content = "Coins Claimed!"})
+        end
+    end,
+})
+
+-- 4. UTILITY
+LuckyTab:AddButton({
+    Title    = "Teleport to Safe Zone",
+    Callback = function()
+        if not _G.Authorized then return end
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = CFrame.new(0, 10, 0) -- Adjust to the actual Safe Zone center if needed
+        end
+    end,
 })
 
 -- ============================================================
