@@ -48,42 +48,29 @@ local VALID_KEYS = {
     ["AETHERKEY-UNLOCK-0001"]            = true,
 }
 -- ============================================================
--- AETHERIUS CORE: AUTHENTICATION GATEKEEPER
+-- AETHERIUS CORE: AUTHENTICATION
 -- ============================================================
 local MarketplaceService = game:GetService("MarketplaceService")
 local LocalPlayer = game.Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 _G.Authorized = false
 
--- 1. Immediate Gamepass Check
-local success, ownsPass = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(LocalPlayer.UserId, 1808462490) end)
-if success and ownsPass then _G.Authorized = true end
-
--- 2. Logic Barrier: This holds the script here until _G.Authorized becomes true
--- (either via the Gamepass check above or your Verify button later)
-task.spawn(function()
-    repeat task.wait(0.5) until _G.Authorized == true
-    print("Aetherius Nexus: Access Verified. Loading UI...")
-end)
-
--- If NOT authorized, we stay on the License Tab logic. 
--- To prevent the "Nil" errors on your other 14 tabs, wrap them in this simple check:
-local function requireAuth() return _G.Authorized end
+-- Immediate Gamepass Check (Silent)
+local VANGUARD_PASS_ID = 1808462490 
+local passSuccess, ownsPass = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(LocalPlayer.UserId, VANGUARD_PASS_ID) end)
+if passSuccess and ownsPass then _G.Authorized = true end
 
 -- ============================================================
 -- LOAD FLUENT
 -- ============================================================
 local Fluent, SaveManager, InterfaceManager
-
 local ok, err = pcall(function()
     Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
     SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
     InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 end)
 
-if not ok or not Fluent then
-    warn("[AETHERIUS] Failed to load Fluent: " .. tostring(err))
-    return
-end
+if not ok or not Fluent then return warn("[AETHERIUS] Failed to load Fluent") end
 
 -- ============================================================
 -- CREATE WINDOW
@@ -98,162 +85,72 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl 
 })
 
--- HIDE THE GLITCHED DEFAULT BUTTONS
 Fluent.MinimizeButton.Visible = false 
 
 -- ============================================================
--- CUSTOM AE TOGGLE BUTTON (FIXES DISCONNECT ICON)
+-- THE AE TOGGLE BUTTON (MOBILE FRIENDLY)
 -- ============================================================
 local ScreenGui = Instance.new("ScreenGui")
-local ToggleButton = Instance.new("ImageButton")
-local UICorner = Instance.new("UICorner")
-
 ScreenGui.Name = "AetheriusToggleUI"
-ScreenGui.Parent = (game:GetService("CoreGui") or game:GetService("Players").LocalPlayer.PlayerGui)
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") -- Changed to PlayerGui for Mobile stability
+ScreenGui.ResetOnSpawn = false
 
+local ToggleButton = Instance.new("ImageButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Parent = ScreenGui
-ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-ToggleButton.BorderSizePixel = 0
+ToggleButton.BackgroundColor3 = Color3.fromRGB(160, 32, 240) -- Purple theme
 ToggleButton.Position = UDim2.new(0, 15, 0.5, -25)
 ToggleButton.Size = UDim2.new(0, 50, 0, 50)
-ToggleButton.Image = "rbxassetid://98931289479698" -- This is your AE Logo
+ToggleButton.Image = "rbxassetid://98931289479698" -- Fixed Asset ID
+ToggleButton.Active = true
 ToggleButton.Draggable = true 
 
+local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 12)
 UICorner.Parent = ToggleButton
 
--- Toggle Logic for Button & Keybind
-local function ToggleUI()
-    if Window then
-        Window:Minimize()
-    end
-end
-
-ToggleButton.MouseButton1Click:Connect(ToggleUI)
-
-UserInputService.InputBegan:Connect(function(input, processed)
-    if input.KeyCode == Enum.KeyCode.LeftControl and not processed then
-        ToggleUI()
-    end
+ToggleButton.MouseButton1Click:Connect(function()
+    Window:Minimize()
 end)
--- ============================================================
-
-
 
 -- ============================================================
--- TAB 1 — LICENSE / KEY SYSTEM (UNIFIED AUTH V15)
+-- TAB 1 — LICENSE
 -- ============================================================
-local MarketplaceService = game:GetService("MarketplaceService")
-local Player = game.Players.LocalPlayer
-
--- CONFIGURATION
-local VANGUARD_PASS_ID = 1808462490 
+local LicenseTab = Window:AddTab({ Title = "License", Icon = "key-round" })
 local BASE_URL = "https://6e36ccc6-1ba9-4d32-acc1-c77212944542-00-1sweu4pulyk66.picard.replit.dev/verify?key="
 local GATEWAY_URL = "https://6e36ccc6-1ba9-4d32-acc1-c77212944542-00-1sweu4pulyk66.picard.replit.dev/"
 
-local LicenseTab = Window:AddTab({ Title = "License", Icon = "key-round" })
-
--- AUTOMATIC GAMEPASS CHECK ON LOAD
-local function CheckGamepass()
-    local success, ownsPass = pcall(function()
-        return MarketplaceService:UserOwnsGamePassAsync(Player.UserId, VANGUARD_PASS_ID)
-    end)
-    
-    if success and ownsPass then
-        _G.Authorized = true
-        Fluent:Notify({
-            Title    = "VANGUARD ELITE",
-            Content  = "Gamepass Detected. Welcome, Commander.",
-            Duration = 8,
-        })
-        return true
-    end
-    return false
-end
-
-local isAutoAuth = CheckGamepass()
-
 LicenseTab:AddParagraph({
     Title   = "AETHERIUS NEXUS V15",
-    Content = isAutoAuth and "Status: [ELITE ACCESS ACTIVE]" or "Enter a license key or own the Vanguard Gamepass to unlock features.",
+    Content = _G.Authorized and "Status: [ELITE ACCESS ACTIVE]" or "Enter a license key to unlock all game tabs.",
 })
 
 local KeyInput = ""
-
 LicenseTab:AddInput("KeyField", {
-    Title       = "License Key",
-    Placeholder = "Enter your key here...",
-    Numeric     = false,
-    Finished    = false,
-    Callback    = function(value)
-        KeyInput = value
-    end,
+    Title = "License Key",
+    Callback = function(v) KeyInput = v end,
 })
 
 LicenseTab:AddButton({
-    Title    = "Verify & Unlock",
-    Description = "Check key against Aetherius Core",
+    Title = "Verify & Unlock",
     Callback = function()
-        if _G.Authorized then 
-            return Fluent:Notify({Title = "ALREADY AUTH", Content = "You already have access!", Duration = 3}) 
-        end
-
-        local trimmed = KeyInput:match("^%s*(.-)%s*$")
-        if trimmed == "" then
-            return Fluent:Notify({Title = "ERROR", Content = "Please enter a key first.", Duration = 3})
-        end
-
-        -- AUTHENTICATION REQUEST
-        local success, response = pcall(function()
-            return game:HttpGet(BASE_URL .. trimmed)
-        end)
-
-        if success then
-            if response == "premium" then
-                _G.Authorized = true
-                Fluent:Notify({
-                    Title    = "VANGUARD ELITE",
-                    Content  = "Premium Key Authenticated. Welcome.",
-                    Duration = 7,
-                })
-            elseif response == "success" then
-                _G.Authorized = true
-                Fluent:Notify({
-                    Title    = "AUTHORIZED",
-                    Content  = "Daily Key Authenticated. Access Granted.",
-                    Duration = 5,
-                })
-            else
-                _G.Authorized = false
-                Fluent:Notify({
-                    Title    = "ACCESS DENIED",
-                    Content  = "Invalid or expired license key.",
-                    Duration = 5,
-                })
-            end
+        if _G.Authorized then return Fluent:Notify({Title="Access Active", Content="You are already verified!"}) end
+        
+        local success, response = pcall(function() return game:HttpGet(BASE_URL .. KeyInput) end)
+        
+        if success and (response == "premium" or response == "success") then
+            _G.Authorized = true
+            Fluent:Notify({Title="AUTHORIZED", Content="Access Granted. Please re-run the script to load all tabs.", Duration=5})
+            -- On mobile, the safest way to load tabs is to re-execute or have them pre-built with protection
         else
-            Fluent:Notify({
-                Title    = "CONNECTION ERROR",
-                Content  = "Could not connect to Aetherius Core. Is Replit online?",
-                Duration = 5,
-            })
+            Fluent:Notify({Title="DENIED", Content="Invalid License Key.", Duration=5})
         end
-    end,
+    end
 })
 
 LicenseTab:AddButton({
-    Title    = "Get Access Key / Buy Premium",
-    Description = "Opens the Aetherius Gateway",
-    Callback = function()
-        setclipboard(GATEWAY_URL)
-        Fluent:Notify({
-            Title   = "Link Copied!",
-            Content = "Gateway URL copied to clipboard.",
-            Duration = 5,
-        })
-    end,
+    Title = "Copy Gateway Link",
+    Callback = function() setclipboard(GATEWAY_URL) end
 })
 -- ============================================================
 -- TAB 2 — COMBAT (AIMBOT)
