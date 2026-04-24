@@ -744,36 +744,37 @@ MM2Tab:AddToggle("MM2RoleESP", {
 })
 
 MM2Tab:AddToggle("MM2CoinFarm", {
-    Title    = "Auto Coin Farm (Deep Scan)",
-    Description = "Actively hunts for the CoinContainer in the Map",
+    Title    = "Auto Coin Farm (Fixed)",
+    Description = "Vacuums Coin_Server models to you",
     Default  = false,
     Callback = function(v)
         if not _G.Authorized then return end
         _G.CoinFarm = v
-        
         task.spawn(function()
             while _G.CoinFarm do
                 local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if root then
-                    -- Aggressive scan for MM2's dynamic coin folder
-                    local container = workspace:FindFirstChild("CoinContainer", true) 
-                    if container then
-                        for _, coin in pairs(container:GetChildren()) do
-                            if coin:IsA("BasePart") or coin:IsA("Model") then
-                                local target = coin:IsA("Model") and coin.PrimaryPart or coin
-                                if target then
-                                    target.CFrame = root.CFrame
-                                    task.wait(0.01) -- Speed vacuum
-                                end
+                    -- Based on your Dex screenshot: Look for Coin_Server models
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj.Name == "Coin_Server" and obj:IsA("Model") then
+                            -- Teleport the actual coin part to you
+                            local coinPart = obj:FindFirstChild("CoinVisual") and obj.CoinVisual:FindFirstChild("MainCoin") 
+                                             or obj.PrimaryPart 
+                                             or obj:FindFirstChildOfClass("BasePart")
+                            
+                            if coinPart then
+                                coinPart.CFrame = root.CFrame
+                                task.wait(0.01) -- Quick snap
                             end
                         end
                     end
                 end
-                task.wait(0.5)
+                task.wait(0.3) -- Loop delay to prevent lag
             end
         end)
     end,
 })
+
 
 
 -- ============================================================
@@ -1285,84 +1286,112 @@ ForestTab:AddButton({
 })
 
 -- ============================================================
--- TAB 16 — SETTINGS (DETECTION & PREMIUM THEMES)
+-- AETHERIUS NEXUS - GLOBAL SETTINGS & SHIELD SYSTEM
 -- ============================================================
+
+-- 1. GAME IDENTIFICATION DATA
+local GameIDs = {
+    ["MM2"]            = {142823291, 335132309}, 
+    ["Arsenal"]        = 286090429,              
+    ["Blox Fruits"]    = {2753915549, 4442272183, 7449925065}, 
+    ["99 Nights"]      = 13865613310,            
+    ["AFS"]            = 3612458913,
+    ["Pet Sim"]        = 15992815145,
+    ["Doors"]          = 6516141723,
+    ["NDS"]            = 18884496,
+    ["Lumber Tycoon 2"] = 13822889
+}
+
+-- 2. THE GLOBAL SHIELD (Invisible Protection)
+_G.GameLock = true
+_G.isGame = function(target)
+    local currentId = game.PlaceId
+    if type(target) == "table" then
+        for _, id in pairs(target) do if currentId == id then return true end end
+    elseif currentId == target then
+        return true
+    end
+    return false
+end
+
+-- 3. SETTINGS TAB UI
 local SettingsTab = Window:AddTab({ Title = "Settings", Icon = "settings" })
 
--- 1. PREMIUM THEMES & CUSTOM COLORS
+SettingsTab:AddSection("Appearance")
+
 SettingsTab:AddDropdown("ThemeDropdown", {
     Title   = "UI Theme",
     Values  = { "Dark", "Light", "Amethyst", "Aqua", "Ocean", "Rose", "Gold", "Emerald" },
     Default = "Dark",
     Callback = function(v)
-        -- Premium check for Elite colors
-        if (v == "Gold" or v == "Emerald") and not _G.Authorized then
-            Fluent:Notify({
-                Title = "Access Denied", 
-                Content = "Gold and Emerald themes require a verified license!",
-                Duration = 5
-            })
-            return
+        if (v == "Gold" or v == "Emerald") then
+            if not _G.Authorized then
+                Fluent:Notify({
+                    Title = "Premium Required", 
+                    Content = "Please verify your license to unlock " .. v .. "!",
+                    Duration = 5
+                })
+                return
+            end
+            
+            -- Apply Premium Color Logic
+            Fluent:SetTheme("Dark")
+            local premiumColor = (v == "Gold") and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(0, 255, 127)
+            
+            -- Force UI Refresh for custom colors
+            Fluent.AccentColor = premiumColor
+            Fluent:Notify({Title = "Theme Applied", Content = "Aetherius Nexus " .. v .. " Edition Activated."})
+        else
+            Fluent:SetTheme(v)
         end
-        Fluent:SetTheme(v)
     end,
 })
 
--- 2. SMART GAME-LOCK (Detection Feature)
-_G.GameLock = true -- Default to on for performance
+SettingsTab:AddSection("Safety & Performance")
+
 SettingsTab:AddToggle("GameLockToggle", {
-    Title    = "Game-Specific Protection",
-    Description = "Stops scripts from running if you aren't in the right game.",
+    Title    = "Global Game-Lock",
+    Description = "Blocks features if you are in the wrong game",
     Default  = true,
-    Callback = function(v) _G.GameLock = v end,
+    Callback = function(v) 
+        _G.GameLock = v 
+        Fluent:Notify({
+            Title = "Game-Lock", 
+            Content = "Protection is now " .. (v and "Enabled" or "Disabled"),
+            Duration = 3
+        })
+    end,
 })
 
--- 3. THE DETECTION LOGIC & IDS
-local GameIDs = {
-    MM2        = {142823291, 335132309}, 
-    Arsenal    = 286090429,              
-    BloxFruits = {2753915549, 4442272183, 7449925065}, 
-    Forest     = 13865613310,            
-    Doors      = 6516141723,             
-    PetSim     = 15992815145,            
-    NDS        = 18884496,               
-    Lumber     = 13822889,
-    AFS        = 3612458913 -- Anime Fighting Simulator
-}
-
-_G.isGame = function(target)
-    if not _G.GameLock then return true end -- If lock is off, ignore protection
-    
-    local currentId = game.PlaceId
-    if type(target) == "table" then
-        for _, id in pairs(target) do
-            if currentId == id then return true end
-        end
-    else
-        if currentId == target then return true end
-    end
-    return false
-end
-
--- 4. UTILITIES
 SettingsTab:AddButton({
     Title    = "Reset All Toggles",
+    Description = "Emergency stop for all features",
     Callback = function()
-        -- Resets core global variables
-        _G.Aimbot, _G.BoxESP, _G.FlyEnabled = false, false, false
-        _G.CoinFarm, _G.SilentAim, _G.ArsBHop = false, false, false
-        _G.InfiniteJump, _G.NoClip = false, false
+        -- Reset common globals
+        _G.Aimbot = false
+        _G.BoxESP = false
+        _G.FlyEnabled = false
+        _G.CoinFarm = false
+        _G.SilentAim = false
+        _G.BHopEnabled = false
         
-        Fluent:Notify({ Title = "Reset Complete", Content = "All features have been turned off.", Duration = 3 })
+        Fluent:Notify({ Title = "System Reset", Content = "All hub features have been disabled.", Duration = 3 })
     end,
+})
+
+SettingsTab:AddSection("Information")
+
+SettingsTab:AddParagraph({
+    Title   = "System Status",
+    Content = "Place ID: " .. game.PlaceId .. "\nAccount: " .. (_G.Authorized and "Premium User" or "Free User") .. "\nVersion: V15.4 (2026 Stable)"
 })
 
 SettingsTab:AddParagraph({
-    Title   = "Hub Information",
-    Content = "Current Game ID: " .. game.PlaceId .. "\nStatus: " .. (_G.Authorized and "PREMIUM" or "FREE"),
+    Title   = "Keybinds",
+    Content = "Menu Toggle: RightShift\nFly: WASD + Space/Ctrl\nNoclip: Automatic when enabled"
 })
 
--- SaveManager / InterfaceManager Configs
+-- Configuration Management
 if SaveManager then
     SaveManager:SetLibrary(Fluent)
     SaveManager:IgnoreThemeSettings()
@@ -1375,6 +1404,34 @@ if InterfaceManager then
     InterfaceManager:SetFolder("AetheriusNexusV15")
     InterfaceManager:BuildInterfaceSection(SettingsTab)
 end
+
+-- 4. APPLY AUTOMATIC DETECTION TO ALL TABS
+-- This small loop checks every tab you created and injects the "You are not in this game" check.
+task.spawn(function()
+    task.wait(1) -- Wait for tabs to initialize
+    for _, Tab in pairs(Window.Tabs) do
+        local gameData = GameIDs[Tab.Title]
+        if gameData then
+            for _, Element in pairs(Tab.Elements) do
+                if Element.Type == "Toggle" or Element.Type == "Button" then
+                    local originalCallback = Element.Callback
+                    Element.Callback = function(v)
+                        if _G.GameLock and not _G.isGame(gameData) then
+                            Fluent:Notify({
+                                Title = "Action Blocked",
+                                Content = "You are not in " .. Tab.Title .. "!",
+                                Duration = 4
+                            })
+                            return
+                        end
+                        originalCallback(v)
+                    end
+                end
+            end
+        end
+    end
+end)
+
 
 -- ============================================================
 -- DRAGGABLE TOGGLE BUTTON (ALPHA ICON)
