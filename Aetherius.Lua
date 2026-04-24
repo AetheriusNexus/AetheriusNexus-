@@ -1107,36 +1107,113 @@ DoorsTab:AddToggle("DoorsFullBright", {
 
 
 -- ============================================================
--- TAB 13 — Amime Fighting Simulator (FIXED)
+-- TAB 14 — ANIME FIGHTING SIM X (GOD MODE UPGRADE)
 -- ============================================================
-local AFSTab = Window:AddTab({ Title = "AFSX", Icon = "flame" })
+local AFSTab = Window:AddTab({ Title = "AFS", Icon = "flame" })
 
-AFSTab:AddParagraph({
-    Title   = "Anime Fighting Sim X",
-    Content = "Auto training, auto quest, and chi farm.",
+AFSTab:AddSection("Power Gacha (Stand/Fruit/Quark)")
+
+-- 1. REMOTE POWER ROLLER
+local SelectedPower = "Fruit"
+AFSTab:AddDropdown("PowerType", {
+    Title = "Select Power Category",
+    Values = {"Stand", "Kagune", "Fruit", "Quark", "Grimoire", "Breath Style"},
+    Default = "Fruit",
+    Callback = function(v) SelectedPower = v end,
 })
 
-AFSTab:AddToggle("AFSAutoTrain", {
-    Title    = "Auto Train (Click Spam)",
+AFSTab:AddButton({
+    Title = "Remote Spin / Roll",
+    Description = "Attempts to roll for a new power (Uses Gems/Currency)",
+    Callback = function()
+        if not _G.Authorized then return end
+        -- Note: Remote names for AFSX Gacha often use 'Spin' or 'Roll'
+        local gachaRemote = game:GetService("ReplicatedStorage"):FindFirstChild("SpinRemote", true) 
+                           or game:GetService("ReplicatedStorage"):FindFirstChild("GachaRemote", true)
+        
+        if gachaRemote then
+            gachaRemote:InvokeServer(SelectedPower)
+            Fluent:Notify({Title = "Gacha", Content = "Rolling for " .. SelectedPower .. "...", Duration = 3})
+        else
+            Fluent:Notify({Title = "Error", Content = "Gacha Remote not found. Walk to the NPC once to cache it.", Duration = 3})
+        end
+    end
+})
+
+AFSTab:AddSection("Currency & Gems")
+
+-- 2. GEM & CHIKARA VACUUM
+AFSTab:AddToggle("AFSGemFarm", {
+    Title    = "Auto Collect Gems & Chikara",
+    Description = "Vacuums all currency drops to your character",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then return end
-        if v then
-            task.spawn(function()
-                while v do
-                    -- Fires the training remote if present
-                    for _, remote in pairs(game:GetDescendants()) do
-                        if remote:IsA("RemoteEvent") and remote.Name:find("Train") then
-                            pcall(function() remote:FireServer() end)
+        if not _G.Authorized then return end
+        _G.GemFarm = v
+        task.spawn(function()
+            while _G.GemFarm do
+                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    -- Scans for Gems, Chikara Shards, and Currency drops
+                    for _, obj in pairs(workspace:GetChildren()) do
+                        if obj.Name:find("Gem") or obj.Name:find("Currency") or obj.Name:find("Shard") then
+                            if obj:IsA("BasePart") then
+                                obj.CFrame = root.CFrame
+                                task.wait(0.05)
+                            end
                         end
                     end
-                    task.wait(0.1)
                 end
-            end)
-        end
+                task.wait(1)
+            end
+        end)
     end,
 })
 
+AFSTab:AddSection("Elite Training")
+
+-- 3. AUTO-TRAIN SPECIALS (Level up your Stand/Fruit)
+AFSTab:AddToggle("AFSSpecialLeveler", {
+    Title    = "Auto-Level Specials",
+    Description = "Automatically trains your equipped Stand/Fruit/Kagune",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.LevelSpecial = v
+        task.spawn(function()
+            while _G.LevelSpecial do
+                -- Fires the specific training for your current special power
+                local remote = game:GetService("ReplicatedStorage"):FindFirstChild("TrainSpecial", true)
+                if remote then
+                    remote:FireServer()
+                end
+                task.wait(0.1)
+            end
+        end)
+    end,
+})
+
+-- 4. MOB KILLER (Gems/Drops)
+AFSTab:AddToggle("AFSMobFarm", {
+    Title    = "Auto-Attack Mobs",
+    Description = "Attacks nearest NPC for Gems and XP",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.MobFarm = v
+        task.spawn(function()
+            while _G.MobFarm do
+                local target = getClosestNPC() -- Logic similar to your Combat tab
+                if target and target:FindFirstChild("HumanoidRootPart") then
+                    -- TPs slightly behind mob and fires attack
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+                    game:GetService("ReplicatedStorage").Remotes.Attack:FireServer()
+                end
+                task.wait(0.2)
+            end
+        end)
+    end,
+})
 
 -- ============================================================
 -- TAB 14 — NATURAL DISASTER SURVIVAL (FIXED)
