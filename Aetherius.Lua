@@ -47,6 +47,27 @@ local VALID_KEYS = {
     ["NEXUS-VANGUARD-ELITE-X99"]         = true,
     ["AETHERKEY-UNLOCK-0001"]            = true,
 }
+-- ============================================================
+-- AETHERIUS CORE: AUTHENTICATION GATEKEEPER
+-- ============================================================
+local MarketplaceService = game:GetService("MarketplaceService")
+local LocalPlayer = game.Players.LocalPlayer
+_G.Authorized = false
+
+-- 1. Immediate Gamepass Check
+local success, ownsPass = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(LocalPlayer.UserId, 1808462490) end)
+if success and ownsPass then _G.Authorized = true end
+
+-- 2. Logic Barrier: This holds the script here until _G.Authorized becomes true
+-- (either via the Gamepass check above or your Verify button later)
+task.spawn(function()
+    repeat task.wait(0.5) until _G.Authorized == true
+    print("Aetherius Nexus: Access Verified. Loading UI...")
+end)
+
+-- If NOT authorized, we stay on the License Tab logic. 
+-- To prevent the "Nil" errors on your other 14 tabs, wrap them in this simple check:
+local function requireAuth() return _G.Authorized end
 
 -- ============================================================
 -- LOAD FLUENT
@@ -197,6 +218,9 @@ LicenseTab:AddButton({
 -- ============================================================
 -- TAB 2 — COMBAT (AIMBOT)
 -- ============================================================
+-- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
+if not _G.Authorized then return end
+
 local CombatTab = Window:AddTab({ Title = "Combat", Icon = "crosshair" })
 
 -- FOV Circle
