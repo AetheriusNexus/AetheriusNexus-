@@ -1,16 +1,6 @@
 -- [[ AETHERIUS NEXUS | V15 ]] --
 -- Rewritten & Fixed by Aetherius Studios
 -- Library: Fluent UI
-_G.Authorized = false
-local MarketplaceService = game:GetService("MarketplaceService")
-local Player = game.Players.LocalPlayer
-
-local _, owns = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(Player.UserId, 1808462490) end)
-if owns then _G.Authorized = true end
-
-if not _G.Authorized then task.wait(2) end 
-
--- The rest of your code follows below...
 
 -- ============================================================
 -- SERVICES & CORE VARIABLES
@@ -95,34 +85,6 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl 
 })
 
-Fluent.MinimizeButton.Visible = false 
-
--- ============================================================
--- THE AE TOGGLE BUTTON (MOBILE FRIENDLY)
--- ============================================================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AetheriusToggleUI"
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") -- Changed to PlayerGui for Mobile stability
-ScreenGui.ResetOnSpawn = false
-
-local ToggleButton = Instance.new("ImageButton")
-ToggleButton.Name = "ToggleButton"
-ToggleButton.Parent = ScreenGui
-ToggleButton.BackgroundColor3 = Color3.fromRGB(160, 32, 240) -- Purple theme
-ToggleButton.Position = UDim2.new(0, 15, 0.5, -25)
-ToggleButton.Size = UDim2.new(0, 50, 0, 50)
-ToggleButton.Image = "rbxassetid://98931289479698" -- Fixed Asset ID
-ToggleButton.Active = true
-ToggleButton.Draggable = true 
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 12)
-UICorner.Parent = ToggleButton
-
-ToggleButton.MouseButton1Click:Connect(function()
-    Window:Minimize()
-end)
-
 -- ============================================================
 -- TAB 1 — LICENSE
 -- ============================================================
@@ -151,17 +113,12 @@ LicenseTab:AddButton({
         if success and (response == "premium" or response == "success") then
             _G.Authorized = true
             Fluent:Notify({Title="AUTHORIZED", Content="Access Granted. Please re-run the script to load all tabs.", Duration=5})
-            -- On mobile, the safest way to load tabs is to re-execute or have them pre-built with protection
         else
             Fluent:Notify({Title="DENIED", Content="Invalid License Key.", Duration=5})
         end
     end
 })
 
-LicenseTab:AddButton({
-    Title = "Copy Gateway Link",
-    Callback = function() setclipboard(GATEWAY_URL) end
-})
 -- ============================================================
 -- TAB 2 — COMBAT (AIMBOT)
 -- ============================================================
