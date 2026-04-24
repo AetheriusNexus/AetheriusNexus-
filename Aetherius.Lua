@@ -1152,11 +1152,8 @@ AFSTab:AddToggle("AFSAutoTrain", {
 })
 
 -- ============================================================
--- TAB 14 — NATURAL DISASTER SURVIVAL (Underrated Classic)
+-- TAB 14 — NATURAL DISASTER SURVIVAL (FIXED)
 -- ============================================================
--- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
-if not _G.Authorized then return end
-
 local NDSTab = Window:AddTab({ Title = "NDS", Icon = "cloud-lightning" })
 
 NDSTab:AddParagraph({
@@ -1164,34 +1161,50 @@ NDSTab:AddParagraph({
     Content = "Anti-damage, safe spot teleport, and god mode.",
 })
 
-    NDSTab:AddButton({
-        Title = "TP to Skybase (Safe)",
-        Callback = function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame = CFrame.new(0, 500, 0)
-                local p = Instance.new("Part", Workspace)
-                p.Size, p.CFrame, p.Anchored = Vector3.new(20, 1, 20), CFrame.new(0, 495, 0), true
-            end
-        end
-    })
+NDSTab:AddButton({
+    Title = "TP to Skybase (Safe)",
+    Callback = function()
+        -- THIS IS WHERE THE PROTECTION GOES
+        if not _G.Authorized then return Fluent:Notify({Title="Locked", Content="Verify Key First", Duration=2}) end
 
-    NDSTab:AddToggle("GodMode", {
-        Title = "Anti-Damage",
-        Callback = function(v)
-            _G.GodMode = v
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(0, 500, 0)
+            -- Create platform
+            local p = Instance.new("Part", workspace)
+            p.Size = Vector3.new(30, 1, 30)
+            p.CFrame = CFrame.new(0, 495, 0)
+            p.Anchored = true
+            p.Name = "AetheriusPlatform"
+        end
+    end
+})
+
+NDSTab:AddToggle("GodMode", {
+    Title = "Anti-Damage",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        
+        _G.GodMode = v
+        task.spawn(function() -- task.spawn is REQUIRED for while loops in toggles
             while _G.GodMode do
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-                    LocalPlayer.Character.Humanoid.Health = 100
-                    if LocalPlayer.Character:FindFirstChild("FallDamage") then 
-                        LocalPlayer.Character.FallDamage:Destroy() 
+                local char = LocalPlayer.Character
+                if char then
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    if hum then
+                        hum.Health = 100
+                    end
+                    -- Deletes the NDS fall damage script
+                    if char:FindFirstChild("FallDamage") then 
+                        char.FallDamage:Destroy() 
                     end
                 end
                 task.wait(0.1)
             end
-        end
-    })
-end)
+        end)
+    end
+})
 
 -- ============================================================
 -- TAB 15 — SETTINGS
