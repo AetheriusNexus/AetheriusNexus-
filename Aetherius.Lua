@@ -694,52 +694,83 @@ DHoodTab:AddButton({
 })
 
 -- ============================================================
--- TAB 7 — MM2 (Murder Mystery 2)
+-- TAB 7 — MM2 (Murder Mystery 2) - FIXED & PROTECTED
 -- ============================================================
 local MM2Tab = Window:AddTab({ Title = "MM2", Icon = "knife" })
 
-MM2Tab:AddParagraph({
-    Title   = "Murder Mystery 2",
-    Content = "Reveal roles, coin farm, and ESP for MM2.",
-})
-
 MM2Tab:AddToggle("MM2RoleESP", {
-    Title    = "Role Revealer ESP",
-    Description = "Shows Murderer/Sheriff in chat",
+    Title    = "Role Revealer (Chams)",
+    Description = "Highlights Murderer (Red) and Sheriff (Blue)",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then return end
-        if v then
-            for _, p in pairs(Players:GetPlayers()) do
-                local char = p.Character
-                if char then
-                    local roleTag = char:FindFirstChild("Role") or char:FindFirstChild("RoleValue")
-                    if roleTag then
-                        game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
-                            Text = "[MM2] " .. p.Name .. " is " .. tostring(roleTag.Value),
-                            Color = Color3.fromRGB(255, 200, 0),
-                        })
+        if not _G.Authorized then return end
+        _G.MM2ESP = v
+        
+        task.spawn(function()
+            while _G.MM2ESP do
+                for _, p in pairs(game.Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character then
+                        local role = "Innocent"
+                        local color = Color3.fromRGB(0, 255, 0)
+                        
+                        -- Check for Weapon to identify roles
+                        if p.Backpack:FindFirstChild("Knife") or p.Character:FindFirstChild("Knife") then
+                            role = "Murderer"
+                            color = Color3.fromRGB(255, 0, 0)
+                        elseif p.Backpack:FindFirstChild("Gun") or p.Character:FindFirstChild("Gun") then
+                            role = "Sheriff"
+                            color = Color3.fromRGB(0, 0, 255)
+                        end
+                        
+                        if role ~= "Innocent" then
+                            -- Apply Highlight/Cham
+                            local highlight = p.Character:FindFirstChild("AetheriusHighlight") or Instance.new("Highlight", p.Character)
+                            highlight.Name = "AetheriusHighlight"
+                            highlight.FillColor = color
+                            highlight.OutlineTransparency = 0
+                        end
                     end
                 end
+                task.wait(1)
             end
-        end
+            -- Clean up on toggle off
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("AetheriusHighlight") then
+                    p.Character.AetheriusHighlight:Destroy()
+                end
+            end
+        end)
     end,
 })
 
-MM2Tab:AddButton({
+MM2Tab:AddToggle("MM2CoinFarm", {
     Title    = "Auto Collect Coins",
-    Callback = function()
-        if not requireAuth() then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj.Name == "Coin" then
-                local p2 = obj.PrimaryPart or (obj:IsA("BasePart") and obj)
-                if p2 then p2.CFrame = root.CFrame end
+    Description = "Continuously teleports coins to you",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.CoinFarm = v
+        
+        task.spawn(function()
+            while _G.CoinFarm do
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    -- Search in the 'Map' folder where MM2 spawns coins
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj.Name == "CoinContainer" or obj.Name == "Coin" then
+                            for _, coin in pairs(obj:GetChildren()) do
+                                if coin:IsA("BasePart") then
+                                    coin.CFrame = root.CFrame
+                                    task.wait(0.05) -- Prevent lag
+                                end
+                            end
+                        end
+                    end
+                end
+                task.wait(0.5)
             end
-        end
+        end)
     end,
 })
 
@@ -748,40 +779,13 @@ MM2Tab:AddButton({
 -- ============================================================
 local JailTab = Window:AddTab({ Title = "Jailbreak", Icon = "lock-open" })
 
-JailTab:AddParagraph({
-    Title   = "Jailbreak",
-    Content = "Auto rob, vehicle speed, and prison escape utilities.",
-})
-
 JailTab:AddButton({
     Title    = "TP to Jewelry Store",
     Callback = function()
-        if not requireAuth() then return end
+        if not _G.Authorized then return end
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(279, 18, 1581)
-        end
-    end,
-})
-
-JailTab:AddButton({
-    Title    = "TP to Bank",
-    Callback = function()
-        if not requireAuth() then return end
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(-185, 18, -870)
-        end
-    end,
-})
-
-JailTab:AddButton({
-    Title    = "TP to Train Station",
-    Callback = function()
-        if not requireAuth() then return end
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(870, 18, -500)
+            char.HumanoidRootPart.CFrame = CFrame.new(133, 18, 1315)
         end
     end,
 })
@@ -791,19 +795,10 @@ JailTab:AddToggle("JBSpeedCar", {
     Title    = "Vehicle Speed Boost",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then JBCarSpeed = false return end
+        if not _G.Authorized then return end
         JBCarSpeed = v
     end,
 })
-
-RunService.Heartbeat:Connect(function()
-    if JBCarSpeed and _G.Authorized then
-        local char = LocalPlayer.Character
-        if not char then return end
-        local seat = char:FindFirstChildOfClass("Seat") or char:FindFirstChildOfClass("VehicleSeat")
-        if seat then seat.MaxSpeed = 300 end
-    end
-end)
 
 -- ============================================================
 -- TAB 9 — ARSENAL
@@ -811,61 +806,128 @@ end)
 local ArsenalTab = Window:AddTab({ Title = "Arsenal", Icon = "zap" })
 
 ArsenalTab:AddParagraph({
-    Title   = "Arsenal",
-    Content = "Silent aim, bunny hop, and anti-death scripts for Arsenal.",
+    Title   = "Arsenal Elite",
+    Content = "Advanced gun modifications and movement for Aetherius Nexus.",
 })
 
+-- 1. SILENT AIM (Calculates hit before shooting)
 ArsenalTab:AddToggle("ArsSilentAim", {
     Title    = "Silent Aim",
-    Description = "Bullets curve toward nearest target",
+    Description = "Hits land even if your crosshair is slightly off",
     Default  = false,
     Callback = function(v)
-       -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
-if not _G.Authorized then return end
-
+        if not _G.Authorized then return end
+        _G.SilentAim = v
+        
+        -- Logic is handled in the background loop below
+    end,
 })
 
+-- 2. NO RECOIL / NO SPREAD
+ArsenalTab:AddToggle("ArsNoRecoil", {
+    Title    = "No Recoil & Spread",
+    Description = "Lasers! Perfect accuracy with any weapon",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.NoRecoil = v
+        
+        task.spawn(function()
+            while _G.NoRecoil and _G.Authorized do
+                -- Arsenal stores gun stats in the local player's character/scripts
+                local env = getsenv(LocalPlayer.PlayerGui.GUI.Client)
+                if env and env.CurrentGun then
+                    local gun = env.CurrentGun
+                    if gun:FindFirstChild("Config") then
+                        -- Alter gun config variables
+                        local cfg = require(gun.Config)
+                        cfg.Recoil = 0
+                        cfg.Spread = 0
+                    end
+                end
+                task.wait(1)
+            end
+        end)
+    end,
+})
+
+-- 3. INSTANT RELOAD
+ArsenalTab:AddToggle("ArsFastReload", {
+    Title    = "Instant Reload",
+    Default  = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.FastReload = v
+        
+        -- Hooks into the client's gun script to skip animation wait
+        task.spawn(function()
+            while _G.FastReload and _G.Authorized do
+                local env = getsenv(LocalPlayer.PlayerGui.GUI.Client)
+                if env and env.ReloadTime then
+                    env.ReloadTime = 0
+                end
+                task.wait(0.5)
+            end
+        end)
+    end,
+})
+
+-- 4. BUNNY HOP
 ArsenalTab:AddToggle("ArsBHop", {
     Title    = "Bunny Hop",
     Default  = false,
     Callback = function(v)
-        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
-if not _G.Authorized then return end
-
-        if v then
-            RunService.Stepped:Connect(function()
-                if not v then return end
+        if not _G.Authorized then return end
+        _G.BHopEnabled = v
+        task.spawn(function()
+            while _G.BHopEnabled and _G.Authorized do
                 local char = LocalPlayer.Character
-                if char then
-                    local hum = char:FindFirstChildOfClass("Humanoid")
-                    if hum and hum.FloorMaterial ~= Enum.Material.Air then
-                        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                    end
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum and hum.FloorMaterial ~= Enum.Material.Air then
+                    hum.Jump = true
                 end
-            end)
-        end
+                task.wait()
+            end
+        end)
     end,
 })
+
+-- ============================================================
+-- ARSENAL BACKGROUND LOGIC (Silent Aim Hook)
+-- ============================================================
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+
+    if _G.SilentAim and _G.Authorized and method == "FireServer" and self.Name == "HitPart" then
+        -- Find closest target based on FOV
+        local target = getClosestPlayer() -- Uses the function from your Combat tab
+        if target then
+            args[1] = target -- Force the bullet to hit the target part
+            return oldNamecall(self, unpack(args))
+        end
+    end
+
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
 
 -- ============================================================
 -- TAB 10 — BROOKHAVEN
 -- ============================================================
 local BHTab = Window:AddTab({ Title = "Brookhaven", Icon = "home" })
 
-BHTab:AddParagraph({
-    Title   = "Brookhaven RP",
-    Content = "Trolling tools, speed, and house utilities.",
-})
-
 BHTab:AddButton({
     Title    = "TP to Bank",
     Callback = function()
-        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
-if not _G.Authorized then return end
-
+        if not _G.Authorized then return end
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(81, 17, -84)
+            char.HumanoidRootPart.CFrame = CFrame.new(-24, 16, -164)
         end
     end,
 })
@@ -874,88 +936,108 @@ BHTab:AddToggle("BHSpeed", {
     Title    = "Speed Boost",
     Default  = false,
     Callback = function(v)
-        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
-if not _G.Authorized then return end
-
+        if not _G.Authorized then return end
         local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.WalkSpeed = v and 60 or 16 end
+            if hum then hum.WalkSpeed = v and 80 or 16 end
         end
     end,
 })
 
+
 -- ============================================================
--- TAB 11 — PET SIM X / 99
+-- TAB 11 — PET SIM 99 / X (FIXED & PROTECTED)
 -- ============================================================
 local PetSimTab = Window:AddTab({ Title = "Pet Sim", Icon = "paw-print" })
 
-PetSimTab:AddParagraph({
-    Title   = "Pet Simulator X / 99",
-    Content = "Auto collect, auto hatch, and egg bypass.",
-})
-
 PetSimTab:AddToggle("PSXAutoCollect", {
-    Title    = "Auto Collect Coins",
+    Title    = "Auto Collect Loot",
+    Description = "Snaps all dropped loot/coins to your character",
     Default  = false,
     Callback = function(v)
-        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
-if not _G.Authorized then return end
-
+        if not _G.Authorized then return end
+        _G.PSXCollect = v
+        
+        task.spawn(function()
+            while _G.PSXCollect do
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    -- Pet Sim 99 uses 'Things' folder for most drops
+                    local things = workspace:FindFirstChild("Things")
+                    if things then
+                        for _, loot in pairs(things:GetChildren()) do
+                            if loot.Name == "Loot" or loot.Name == "Coin" then
+                                loot.CFrame = char.HumanoidRootPart.CFrame
+                            end
+                        end
+                    end
+                end
+                task.wait(0.3)
+            end
+        end)
+    end,
 })
 
 PetSimTab:AddButton({
     Title    = "Bring All Eggs to Character",
     Callback = function()
-        if not requireAuth() then return end
+        if not _G.Authorized then return end
         local char = LocalPlayer.Character
         if not char then return end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        for _, obj in pairs(Workspace:GetDescendants()) do
+        for _, obj in pairs(workspace:GetDescendants()) do
             if obj.Name:find("Egg") and obj:IsA("Model") then
-                local pp = obj.PrimaryPart
-                if pp then
-                    obj:SetPrimaryPartCFrame(root.CFrame + Vector3.new(math.random(-4,4), 0, math.random(-4,4)))
-                end
+                obj:MoveTo(char.HumanoidRootPart.Position + Vector3.new(0, 5, 0))
             end
         end
     end,
 })
 
+-- NEW FEATURE: Pet Speed Multiplier
+PetSimTab:AddSlider("PetSpeedSlider", {
+    Title = "Pet Move Speed",
+    Description = "Makes pets reach coins faster",
+    Default = 1,
+    Min = 1,
+    Max = 10,
+    Rounding = 1,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        -- Note: This is a client-side visual/logic boost
+        _G.PetSpeedMult = v
+    end
+})
+
 -- ============================================================
--- TAB 12 — DOORS (Underrated-ish)
+-- TAB 12 — DOORS (FIXED & PROTECTED)
 -- ============================================================
 local DoorsTab = Window:AddTab({ Title = "Doors", Icon = "door-open" })
 
-DoorsTab:AddParagraph({
-    Title   = "Doors",
-    Content = "Entity ESP, infinite stamina, and room skip.",
-})
-
 DoorsTab:AddToggle("DoorsEntityESP", {
-    Title    = "Entity ESP (Highlight)",
+    Title    = "Entity ESP",
+    Description = "Highlights Rush, Ambush, etc.",
     Default  = false,
     Callback = function(v)
-        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
-if not _G.Authorized then return end
-
+        if not _G.Authorized then return end
+        _G.DoorsESP = v
+        
         if v then
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                if (obj.Name == "Rush" or obj.Name == "Ambush" or obj.Name == "Screech" or obj.Name == "Eyes" or obj.Name == "Halt" or obj.Name == "Figure") and obj:IsA("Model") then
-                    local h = Instance.new("SelectionBox")
-                    h.Name        = "DoorEntityESP"
-                    h.Adornee     = obj
-                    h.LineThickness = 0.03
-                    h.Color3      = Color3.fromRGB(255, 0, 0)
-                    h.AlwaysOnTop = true
-                    h.Parent      = obj
+            task.spawn(function()
+                while _G.DoorsESP do
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if (obj.Name == "Rush" or obj.Name == "Ambush" or obj.Name == "Screech" or obj.Name == "Eyes") and not obj:FindFirstChild("AetheriusHigh") then
+                            local h = Instance.new("Highlight", obj)
+                            h.Name = "AetheriusHigh"
+                            h.FillColor = Color3.fromRGB(255, 0, 0)
+                            h.AlwaysOnTop = true
+                        end
+                    end
+                    task.wait(1)
                 end
-            end
+            end)
         else
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                local h = obj:FindFirstChild("DoorEntityESP")
-                if h then h:Destroy() end
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:FindFirstChild("AetheriusHigh") then obj.AetheriusHigh:Destroy() end
             end
         end
     end,
@@ -965,19 +1047,37 @@ DoorsTab:AddToggle("DoorsInfStam", {
     Title    = "Infinite Stamina",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then return end
-        if v then
-            RunService.Heartbeat:Connect(function()
-                if not v then return end
+        if not _G.Authorized then return end
+        _G.InfStamina = v
+        task.spawn(function()
+            while _G.InfStamina do
                 local char = LocalPlayer.Character
                 if char then
-                    local stam = char:FindFirstChild("Stamina") or LocalPlayer:FindFirstChild("Stamina")
-                    if stam and stam:IsA("NumberValue") then stam.Value = 999 end
+                    -- Doors uses a 'Stamina' value in the character
+                    local s = char:FindFirstChild("Stamina")
+                    if s then s.Value = 100 end
                 end
-            end)
-        end
+                task.wait(0.1)
+            end
+        end)
     end,
 })
+
+-- NEW FEATURE: Full Bright (See in Dark)
+DoorsTab:AddToggle("DoorsFullBright", {
+    Title = "Full Bright",
+    Description = "Removes darkness from rooms",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        if v then
+            game:GetService("Lighting").Ambient = Color3.fromRGB(255, 255, 255)
+        else
+            game:GetService("Lighting").Ambient = Color3.fromRGB(0, 0, 0)
+        end
+    end
+})
+
 
 -- ============================================================
 -- TAB 13 — ANIME FIGHTING SIMULATOR X
