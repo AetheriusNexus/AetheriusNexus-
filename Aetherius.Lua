@@ -122,19 +122,16 @@ LicenseTab:AddButton({
 -- ============================================================
 -- TAB 2 — COMBAT (AIMBOT)
 -- ============================================================
--- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
-if not _G.Authorized then return end
-
 local CombatTab = Window:AddTab({ Title = "Combat", Icon = "crosshair" })
 
--- FOV Circle
+-- FOV Circle setup
 local AimFOVCircle = Drawing.new("Circle")
 AimFOVCircle.Visible  = false
 AimFOVCircle.Filled   = false
 AimFOVCircle.Color    = Color3.fromRGB(255, 50, 50)
 AimFOVCircle.Thickness = 1
 AimFOVCircle.NumSides = 64
-AimFOVCircle.Radius   = _G.AimbotFOV
+AimFOVCircle.Radius   = _G.AimbotFOV or 200
 AimFOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
 CombatTab:AddToggle("AimbotToggle", {
@@ -142,11 +139,9 @@ CombatTab:AddToggle("AimbotToggle", {
     Description = "Locks aim to nearest visible player",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then
-            -- Fluent toggles can't be force-set externally easily, just block behaviour
-            _G.Aimbot = false
-            return
-        end
+        -- PUT THIS LINE AT THE TOP OF CALLBACK
+        if not _G.Authorized then return end
+        
         _G.Aimbot = v
         AimFOVCircle.Visible = v
     end,
@@ -154,12 +149,12 @@ CombatTab:AddToggle("AimbotToggle", {
 
 CombatTab:AddSlider("SmoothSlider", {
     Title    = "Smoothness",
-    Description = "Lower = snappier | Higher = smoother",
     Default  = 15,
     Min      = 1,
     Max      = 100,
     Rounding = 1,
     Callback = function(v)
+        if not _G.Authorized then return end
         _G.AimbotSmooth = v / 1000
     end,
 })
@@ -171,6 +166,7 @@ CombatTab:AddSlider("FOVSlider", {
     Max      = 600,
     Rounding = 1,
     Callback = function(v)
+        if not _G.Authorized then return end
         _G.AimbotFOV = v
         AimFOVCircle.Radius = v
     end,
@@ -181,6 +177,7 @@ CombatTab:AddDropdown("AimbotPartDrop", {
     Values  = { "Head", "HumanoidRootPart", "Torso", "UpperTorso" },
     Default = "Head",
     Callback = function(v)
+        if not _G.Authorized then return end
         _G.AimbotPart = v
     end,
 })
@@ -189,63 +186,19 @@ CombatTab:AddToggle("FOVVisToggle", {
     Title   = "Show FOV Circle",
     Default = false,
     Callback = function(v)
+        if not _G.Authorized then return end
         AimFOVCircle.Visible = _G.Aimbot and v
     end,
 })
 
 CombatTab:AddToggle("TeamCheckToggle", {
     Title    = "Team Check",
-    Description = "Do not target teammates",
     Default  = true,
-    Callback = function(v) _G.TeamCheck = v end,
+    Callback = function(v) 
+        if not _G.Authorized then return end
+        _G.TeamCheck = v 
+    end,
 })
-
--- Aimbot Logic
-local function getClosestPlayer()
-    local closest = nil
-    local closestDist = _G.AimbotFOV
-    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-    for _, p in pairs(Players:GetPlayers()) do
-        if p == LocalPlayer then continue end
-        if not p.Character then continue end
-
-        local char = p.Character
-        local hum  = char:FindFirstChildOfClass("Humanoid")
-        local root = char:FindFirstChild(_G.AimbotPart) or char:FindFirstChild("HumanoidRootPart")
-
-        if not hum or not root then continue end
-        if hum.Health <= 0 then continue end
-        if _G.TeamCheck and p.Team == LocalPlayer.Team and p.Team ~= nil then continue end
-
-        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-        if not onScreen then continue end
-
-        local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-        if dist < closestDist then
-            closestDist = dist
-            closest     = root
-        end
-    end
-
-    return closest
-end
-
-RunService.RenderStepped:Connect(function()
-    -- Update FOV circle position
-    AimFOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-    if not (_G.Aimbot and _G.Authorized) then return end
-
-    -- Only aim while right-click held (common aimbot convention)
-    if not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then return end
-
-    local target = getClosestPlayer()
-    if target then
-        local targetCFrame = CFrame.new(Camera.CFrame.Position, target.Position)
-        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, _G.AimbotSmooth)
-    end
-end)
 
 -- ============================================================
 -- TAB 3 — VISION (ESP)
@@ -254,20 +207,19 @@ local VisionTab = Window:AddTab({ Title = "Vision", Icon = "eye" })
 
 VisionTab:AddToggle("BoxESPToggle", {
     Title    = "Box ESP",
-    Description = "Draws boxes around players",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then _G.BoxESP = false return end
+        -- PUT THIS LINE AT THE TOP OF CALLBACK
+        if not _G.Authorized then return end
         _G.BoxESP = v
     end,
 })
 
 VisionTab:AddToggle("NameESPToggle", {
     Title    = "Name ESP",
-    Description = "Displays player names above heads",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then _G.NameESP = false return end
+        if not _G.Authorized then return end
         _G.NameESP = v
     end,
 })
@@ -276,7 +228,7 @@ VisionTab:AddToggle("HealthESPToggle", {
     Title    = "Health Bar ESP",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then _G.HealthESP = false return end
+        if not _G.Authorized then return end
         _G.HealthESP = v
     end,
 })
@@ -285,10 +237,11 @@ VisionTab:AddToggle("ChamsToggle", {
     Title    = "Chams (Through Walls)",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then _G.Chams = false return end
+        if not _G.Authorized then return end
         _G.Chams = v
     end,
 })
+
 
 -- ESP Drawing Pool
 local ESPPool = {}
@@ -437,7 +390,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ============================================================
--- TAB 4 — MOVEMENT
+-- TAB 4 — MOVEMENT (FIXED & PROTECTED)
 -- ============================================================
 local MovementTab = Window:AddTab({ Title = "Movement", Icon = "footprints" })
 
@@ -446,13 +399,13 @@ MovementTab:AddToggle("SpeedToggle", {
     Description = "Increases your walk speed",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then _G.SpeedHack = false return end
+        if not _G.Authorized then return end
         _G.SpeedHack = v
         local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
-                hum.WalkSpeed = v and _G.SpeedValue or 16
+                hum.WalkSpeed = v and (_G.SpeedValue or 30) or 16
             end
         end
     end,
@@ -465,12 +418,12 @@ MovementTab:AddSlider("SpeedSlider", {
     Max      = 250,
     Rounding = 1,
     Callback = function(v)
+        if not _G.Authorized then return end
         _G.SpeedValue = v
         if _G.SpeedHack then
             local char = LocalPlayer.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then hum.WalkSpeed = v end
+            if char and char:FindFirstChildOfClass("Humanoid") then
+                char.Humanoid.WalkSpeed = v
             end
         end
     end,
@@ -480,7 +433,7 @@ MovementTab:AddToggle("InfJumpToggle", {
     Title    = "Infinite Jump",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then _G.InfiniteJump = false return end
+        if not _G.Authorized then return end
         _G.InfiniteJump = v
     end,
 })
@@ -489,16 +442,16 @@ MovementTab:AddToggle("NoClipToggle", {
     Title    = "Noclip",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then _G.NoClip = false return end
+        if not _G.Authorized then return end
         _G.NoClip = v
     end,
 })
 
 MovementTab:AddToggle("FlyToggle", {
-    Title    = "Fly",
+    Title    = "Fly (PC & Mobile)",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then _G.FlyEnabled = false return end
+        if not _G.Authorized then return end
         _G.FlyEnabled = v
     end,
 })
@@ -509,27 +462,33 @@ MovementTab:AddSlider("FlySpeedSlider", {
     Min      = 10,
     Max      = 300,
     Rounding = 1,
-    Callback = function(v) _G.FlySpeed = v end,
+    Callback = function(v) 
+        if not _G.Authorized then return end
+        _G.FlySpeed = v 
+    end,
 })
+
+-- ============================================================
+-- MOVEMENT LOGIC (BACKGROUND LOOPS)
+-- ============================================================
 
 -- Infinite Jump
 UserInputService.JumpRequest:Connect(function()
     if _G.InfiniteJump and _G.Authorized then
         local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        if char and char:FindFirstChildOfClass("Humanoid") then
+            char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
         end
     end
 end)
 
--- Noclip
+-- Noclip (Optimized)
 RunService.Stepped:Connect(function()
     if _G.NoClip and _G.Authorized then
         local char = LocalPlayer.Character
         if char then
             for _, p in pairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then
+                if p:IsA("BasePart") and p.CanCollide then
                     p.CanCollide = false
                 end
             end
@@ -537,63 +496,49 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Fly Logic
-local BodyVelocity, BodyGyro
-local flyConn
-
-local function enableFly()
+-- FIXED FLY LOGIC (Universal Mobile/PC)
+local bv, bg
+RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
 
-    BodyVelocity = Instance.new("BodyVelocity")
-    BodyVelocity.Velocity    = Vector3.zero
-    BodyVelocity.MaxForce    = Vector3.new(1e9, 1e9, 1e9)
-    BodyVelocity.Parent      = root
-
-    BodyGyro = Instance.new("BodyGyro")
-    BodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-    BodyGyro.D         = 100
-    BodyGyro.CFrame    = root.CFrame
-    BodyGyro.Parent    = root
-
-    flyConn = RunService.RenderStepped:Connect(function()
-        if not _G.FlyEnabled then
-            if BodyVelocity then BodyVelocity:Destroy() end
-            if BodyGyro then BodyGyro:Destroy() end
-            if flyConn then flyConn:Disconnect() end
-            return
+    if _G.FlyEnabled and _G.Authorized and root and hum then
+        -- Prevent Falling Animation
+        hum.PlatformStand = true 
+        
+        if not root:FindFirstChild("AetheriusFlyBV") then
+            bv = Instance.new("BodyVelocity")
+            bv.Name = "AetheriusFlyBV"
+            bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+            bv.Parent = root
+            
+            bg = Instance.new("BodyGyro")
+            bg.Name = "AetheriusFlyBG"
+            bg.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+            bg.D = 100
+            bg.Parent = root
         end
-        local dir = Vector3.zero
-        local cf  = Camera.CFrame
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cf.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cf.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cf.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cf.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0, 1, 0) end
-        BodyVelocity.Velocity = dir * _G.FlySpeed
-        BodyGyro.CFrame       = cf
-    end)
-end
-
-local function disableFly()
-    _G.FlyEnabled = false
-    if BodyVelocity then BodyVelocity:Destroy() BodyVelocity = nil end
-    if BodyGyro then BodyGyro:Destroy() BodyGyro = nil end
-    if flyConn then flyConn:Disconnect() flyConn = nil end
-end
-
--- Watch for fly toggle changes
-local prevFly = false
-RunService.Heartbeat:Connect(function()
-    if _G.FlyEnabled and not prevFly then
-        enableFly()
-    elseif not _G.FlyEnabled and prevFly then
-        disableFly()
+        
+        -- Vector calculation for PC & Mobile
+        local cameraCF = workspace.CurrentCamera.CFrame
+        local dir = hum.MoveDirection -- Works for Mobile Joystick and PC WASD
+        
+        -- Vertical Movement (PC Only, but keeps speed)
+        local up = UserInputService:IsKeyDown(Enum.KeyCode.Space) and 1 or 0
+        local down = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) and -1 or 0
+        
+        local verticalDir = Vector3.new(0, up + down, 0)
+        bv.Velocity = (dir + verticalDir) * (_G.FlySpeed or 50)
+        bg.CFrame = cameraCF
+    else
+        -- Clean up Fly
+        if hum then hum.PlatformStand = false end
+        if root then
+            if root:FindFirstChild("AetheriusFlyBV") then root.AetheriusFlyBV:Destroy() end
+            if root:FindFirstChild("AetheriusFlyBG") then root.AetheriusFlyBG:Destroy() end
+        end
     end
-    prevFly = _G.FlyEnabled
 end)
 
 -- ============================================================
