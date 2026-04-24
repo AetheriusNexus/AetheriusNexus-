@@ -820,15 +820,18 @@ ArsenalTab:AddToggle("ArsSilentAim", {
     Description = "Bullets curve toward nearest target",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then return end
-    end,
+       -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
+if not _G.Authorized then return end
+
 })
 
 ArsenalTab:AddToggle("ArsBHop", {
     Title    = "Bunny Hop",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then return end
+        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
+if not _G.Authorized then return end
+
         if v then
             RunService.Stepped:Connect(function()
                 if not v then return end
@@ -857,7 +860,9 @@ BHTab:AddParagraph({
 BHTab:AddButton({
     Title    = "TP to Bank",
     Callback = function()
-        if not requireAuth() then return end
+        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
+if not _G.Authorized then return end
+
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             char.HumanoidRootPart.CFrame = CFrame.new(81, 17, -84)
@@ -869,7 +874,9 @@ BHTab:AddToggle("BHSpeed", {
     Title    = "Speed Boost",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then return end
+        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
+if not _G.Authorized then return end
+
         local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
@@ -892,8 +899,9 @@ PetSimTab:AddToggle("PSXAutoCollect", {
     Title    = "Auto Collect Coins",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then return end
-    end,
+        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
+if not _G.Authorized then return end
+
 })
 
 PetSimTab:AddButton({
@@ -929,7 +937,9 @@ DoorsTab:AddToggle("DoorsEntityESP", {
     Title    = "Entity ESP (Highlight)",
     Default  = false,
     Callback = function(v)
-        if v and not requireAuth() then return end
+        -- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
+if not _G.Authorized then return end
+
         if v then
             for _, obj in pairs(Workspace:GetDescendants()) do
                 if (obj.Name == "Rush" or obj.Name == "Ambush" or obj.Name == "Screech" or obj.Name == "Eyes" or obj.Name == "Halt" or obj.Name == "Figure") and obj:IsA("Model") then
