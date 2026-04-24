@@ -1190,49 +1190,179 @@ NDSTab:AddToggle("GodMode", {
         end)
     end
 })
+-- ============================================================
+-- TAB 15 — 99 NIGHTS IN THE FOREST
+-- ============================================================
+local ForestTab = Window:AddTab({ Title = "99 Nights", Icon = "trees" })
+
+ForestTab:AddParagraph({
+    Title   = "Forest Survival Utilities",
+    Content = "Item spawner and resource generators for 99 Nights.",
+})
+
+-- 1. GRAB ITEMS SECTION
+local SelectedItem = "Old Axe"
+local ItemList = {
+    -- Sacks
+    "Good Sack", "Infernal Sack", "Giant Sack",
+    -- Axes
+    "Old Axe", "Good Axe", "Ice Axe", "Strong Axe", "Chainsaw",
+    -- Fishing
+    "Old Rod", "Good Rod", "Strong Rod",
+    -- Taming
+    "Old Taming Flute", "Good Taming Flute", "Strong Taming Flute",
+    -- Food
+    "Carrot", "Corn", "Pumpkin", "Berry", "Apple", "Morsek", "Morsel", 
+    "Cooked Morsel", "Steak", "Cooked Steak", "Ribs", "Cooked Ribs", 
+    "Cake", "Chili", "Stew", "Meat Sandwich", "Steak Dinner", "Carrot cake", "Jar o' Jelly",
+    -- Seeds
+    "Chili Seeds", "Flower Seeds", "Berry Seeds", "Firefly Seeds", "Moonflower Seeds", "Mandrake Seeds",
+    -- Weapons
+    "Spear", "Morningstar", "Katana", "Laser Sword", "Scythe", "Poison Claws",
+    -- Guns & Ammo
+    "Revolver", "Rifle", "Tactical Shotgun", "Flamethrower", 
+    "Revolver Ammo", "Rifle Ammo", "Shotgun Ammo", "Fuel Canister", "Oil Barrel",
+    -- Armor
+    "Leather Body", "Poison Body", "Iron Body", "Thorn Body", "Riot Shield", "Obsidiron Body"
+}
+
+ForestTab:AddDropdown("ItemSelector", {
+    Title = "Select Item",
+    Values = ItemList,
+    Default = "Old Axe",
+    Callback = function(v)
+        if not _G.Authorized then return end
+        SelectedItem = v
+    end,
+})
+
+ForestTab:AddButton({
+    Title = "Grab Item (Spawn on Ground)",
+    Description = "Spawns the selected item at your feet",
+    Callback = function()
+        if not _G.Authorized then return end
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            -- Attempting to trigger the game's drop/spawn remote
+            -- Note: Game-specific Remote names may vary, searching for 'Item' or 'Spawn'
+            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("SpawnItem", true) or 
+                           game:GetService("ReplicatedStorage"):FindFirstChild("DropItem", true)
+            
+            if remote then
+                remote:FireServer(SelectedItem, root.CFrame * CFrame.new(0, 0, -5))
+                Fluent:Notify({Title = "Success", Content = "Spawned " .. SelectedItem, Duration = 3})
+            else
+                -- Fallback: Manual check for local placement
+                Fluent:Notify({Title = "Error", Content = "Item Remote not found. Spawning might be patched.", Duration = 3})
+            end
+        end
+    end
+})
+
+-- 2. RESOURCE SPAWNER SECTION
+ForestTab:AddSection("Resources")
+
+ForestTab:AddButton({
+    Title = "Spawn Wood Bundle",
+    Callback = function()
+        if not _G.Authorized then return end
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("SpawnResource", true)
+        if remote then
+            remote:FireServer("Wood", LocalPlayer.Character.HumanoidRootPart.CFrame)
+        end
+    end
+})
+
+ForestTab:AddButton({
+    Title = "Spawn Coal Stack",
+    Callback = function()
+        if not _G.Authorized then return end
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("SpawnResource", true)
+        if remote then
+            remote:FireServer("Coal", LocalPlayer.Character.HumanoidRootPart.CFrame)
+        end
+    end
+})
 
 -- ============================================================
--- TAB 15 — SETTINGS
+-- TAB 16 — SETTINGS (DETECTION & PREMIUM THEMES)
 -- ============================================================
 local SettingsTab = Window:AddTab({ Title = "Settings", Icon = "settings" })
 
+-- 1. PREMIUM THEMES & CUSTOM COLORS
 SettingsTab:AddDropdown("ThemeDropdown", {
     Title   = "UI Theme",
-    Values  = { "Dark", "Light", "Amethyst", "Aqua", "Ocean", "Rose" },
+    Values  = { "Dark", "Light", "Amethyst", "Aqua", "Ocean", "Rose", "Gold", "Emerald" },
     Default = "Dark",
     Callback = function(v)
+        -- Premium check for Elite colors
+        if (v == "Gold" or v == "Emerald") and not _G.Authorized then
+            Fluent:Notify({
+                Title = "Access Denied", 
+                Content = "Gold and Emerald themes require a verified license!",
+                Duration = 5
+            })
+            return
+        end
         Fluent:SetTheme(v)
     end,
 })
 
-SettingsTab:AddToggle("NotifToggle", {
-    Title    = "Notifications",
+-- 2. SMART GAME-LOCK (Detection Feature)
+_G.GameLock = true -- Default to on for performance
+SettingsTab:AddToggle("GameLockToggle", {
+    Title    = "Game-Specific Protection",
+    Description = "Stops scripts from running if you aren't in the right game.",
     Default  = true,
-    Callback = function(v) end,
+    Callback = function(v) _G.GameLock = v end,
 })
 
+-- 3. THE DETECTION LOGIC & IDS
+local GameIDs = {
+    MM2        = {142823291, 335132309}, 
+    Arsenal    = 286090429,              
+    BloxFruits = {2753915549, 4442272183, 7449925065}, 
+    Forest     = 13865613310,            
+    Doors      = 6516141723,             
+    PetSim     = 15992815145,            
+    NDS        = 18884496,               
+    Lumber     = 13822889,
+    AFS        = 3612458913 -- Anime Fighting Simulator
+}
+
+_G.isGame = function(target)
+    if not _G.GameLock then return true end -- If lock is off, ignore protection
+    
+    local currentId = game.PlaceId
+    if type(target) == "table" then
+        for _, id in pairs(target) do
+            if currentId == id then return true end
+        end
+    else
+        if currentId == target then return true end
+    end
+    return false
+end
+
+-- 4. UTILITIES
 SettingsTab:AddButton({
     Title    = "Reset All Toggles",
     Callback = function()
-        _G.Aimbot    = false
-        _G.BoxESP    = false
-        _G.NameESP   = false
-        _G.HealthESP = false
-        _G.Chams     = false
-        _G.SpeedHack = false
-        _G.InfiniteJump = false
-        _G.NoClip    = false
-        _G.FlyEnabled = false
-        Fluent:Notify({ Title = "Reset", Content = "All features have been disabled.", Duration = 3 })
+        -- Resets core global variables
+        _G.Aimbot, _G.BoxESP, _G.FlyEnabled = false, false, false
+        _G.CoinFarm, _G.SilentAim, _G.ArsBHop = false, false, false
+        _G.InfiniteJump, _G.NoClip = false, false
+        
+        Fluent:Notify({ Title = "Reset Complete", Content = "All features have been turned off.", Duration = 3 })
     end,
 })
 
 SettingsTab:AddParagraph({
-    Title   = "Keybinds",
-    Content = "Toggle GUI: RightShift\nAimbot Fire: Hold RMB (Right Mouse Button)\nFly Controls: WASD + Space/Ctrl",
+    Title   = "Hub Information",
+    Content = "Current Game ID: " .. game.PlaceId .. "\nStatus: " .. (_G.Authorized and "PREMIUM" or "FREE"),
 })
 
--- If SaveManager loaded, setup config saving
+-- SaveManager / InterfaceManager Configs
 if SaveManager then
     SaveManager:SetLibrary(Fluent)
     SaveManager:IgnoreThemeSettings()
