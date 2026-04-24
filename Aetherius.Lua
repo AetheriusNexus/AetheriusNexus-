@@ -79,29 +79,44 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.RightShift,
 })
 
--- ============================================================
--- HELPER: Auth Guard Notify
--- ============================================================
-local function requireAuth()
-    if not _G.Authorized then
-        Fluent:Notify({
-            Title   = "Access Denied",
-            Content = "You must verify your license key first.",
-            Duration = 4,
-        })
-        return false
-    end
-    return true
-end
+
 
 -- ============================================================
--- TAB 1 — LICENSE / KEY SYSTEM
+-- TAB 1 — LICENSE / KEY SYSTEM (UNIFIED AUTH V15)
 -- ============================================================
+local MarketplaceService = game:GetService("MarketplaceService")
+local Player = game.Players.LocalPlayer
+
+-- CONFIGURATION
+local VANGUARD_PASS_ID = 1808462490 
+local BASE_URL = "https://6e36ccc6-1ba9-4d32-acc1-c77212944542-00-1sweu4pulyk66.picard.replit.dev/verify?key="
+local GATEWAY_URL = "https://6e36ccc6-1ba9-4d32-acc1-c77212944542-00-1sweu4pulyk66.picard.replit.dev/"
+
 local LicenseTab = Window:AddTab({ Title = "License", Icon = "key-round" })
+
+-- AUTOMATIC GAMEPASS CHECK ON LOAD
+local function CheckGamepass()
+    local success, ownsPass = pcall(function()
+        return MarketplaceService:UserOwnsGamePassAsync(Player.UserId, VANGUARD_PASS_ID)
+    end)
+    
+    if success and ownsPass then
+        _G.Authorized = true
+        Fluent:Notify({
+            Title    = "VANGUARD ELITE",
+            Content  = "Gamepass Detected. Welcome, Commander.",
+            Duration = 8,
+        })
+        return true
+    end
+    return false
+end
+
+local isAutoAuth = CheckGamepass()
 
 LicenseTab:AddParagraph({
     Title   = "AETHERIUS NEXUS V15",
-    Content = "Enter a valid license key below to unlock all features.\nFree key: AETHERIUS-NEXUS-FREE-2025",
+    Content = isAutoAuth and "Status: [ELITE ACCESS ACTIVE]" or "Enter a license key or own the Vanguard Gamepass to unlock features.",
 })
 
 local KeyInput = ""
@@ -118,41 +133,67 @@ LicenseTab:AddInput("KeyField", {
 
 LicenseTab:AddButton({
     Title    = "Verify & Unlock",
-    Description = "Click to validate your license key",
+    Description = "Check key against Aetherius Core",
     Callback = function()
-        local trimmed = KeyInput:match("^%s*(.-)%s*$") -- trim whitespace
-        if VALID_KEYS[trimmed] then
-            _G.Authorized = true
-            Fluent:Notify({
-                Title    = "AUTHORIZED",
-                Content  = "Welcome to Aetherius Nexus V15!",
-                Duration = 6,
-            })
+        if _G.Authorized then 
+            return Fluent:Notify({Title = "ALREADY AUTH", Content = "You already have access!", Duration = 3}) 
+        end
+
+        local trimmed = KeyInput:match("^%s*(.-)%s*$")
+        if trimmed == "" then
+            return Fluent:Notify({Title = "ERROR", Content = "Please enter a key first.", Duration = 3})
+        end
+
+        -- AUTHENTICATION REQUEST
+        local success, response = pcall(function()
+            return game:HttpGet(BASE_URL .. trimmed)
+        end)
+
+        if success then
+            if response == "premium" then
+                _G.Authorized = true
+                Fluent:Notify({
+                    Title    = "VANGUARD ELITE",
+                    Content  = "Premium Key Authenticated. Welcome.",
+                    Duration = 7,
+                })
+            elseif response == "success" then
+                _G.Authorized = true
+                Fluent:Notify({
+                    Title    = "AUTHORIZED",
+                    Content  = "Daily Key Authenticated. Access Granted.",
+                    Duration = 5,
+                })
+            else
+                _G.Authorized = false
+                Fluent:Notify({
+                    Title    = "ACCESS DENIED",
+                    Content  = "Invalid or expired license key.",
+                    Duration = 5,
+                })
+            end
         else
-            _G.Authorized = false
             Fluent:Notify({
-                Title    = "INVALID KEY",
-                Content  = "The key you entered is incorrect.",
-                Duration = 4,
+                Title    = "CONNECTION ERROR",
+                Content  = "Could not connect to Aetherius Core. Is Replit online?",
+                Duration = 5,
             })
         end
     end,
 })
 
 LicenseTab:AddButton({
-    Title    = "Get Free Key (Linkvertise)",
-    Description = "Opens key grabber in browser",
+    Title    = "Get Access Key / Buy Premium",
+    Description = "Opens the Aetherius Gateway",
     Callback = function()
-        -- Replace with your actual Linkvertise URL
-        setclipboard("https://linkvertise.com/aetherius-nexus")
+        setclipboard(GATEWAY_URL)
         Fluent:Notify({
-            Title   = "Copied!",
-            Content = "Key link copied to clipboard.",
-            Duration = 3,
+            Title   = "Link Copied!",
+            Content = "Gateway URL copied to clipboard.",
+            Duration = 5,
         })
     end,
 })
-
 -- ============================================================
 -- TAB 2 — COMBAT (AIMBOT)
 -- ============================================================
