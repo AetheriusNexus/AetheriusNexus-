@@ -97,8 +97,19 @@ local Window = Fluent:CreateWindow({
     Size     = UDim2.fromOffset(620, 500),
     Acrylic  = false,
     Theme    = "Dark",
-    MinimizeKey = Enum.KeyCode.RightShift,
+    MinimizeKey = Enum.KeyCode.LeftControl, -- SET THIS TO LEFT CONTROL
 })
+
+-- This removes the weird "Headset" icon and replaces it with a clean one
+-- It also fixes the 'Force Leave' issue by defining what happens when minimized
+Fluent.MinimizeButton:SetIcon("menu") -- Changes the icon to a menu burger
+Fluent.MinimizeButton.Visible = true
+-- This ensures the button actually toggles the UI visibility
+UserInputService.InputBegan:Connect(function(input, processed)
+    if input.KeyCode == Enum.KeyCode.LeftControl and not processed then
+        Window:Minimize() -- This toggles the window state
+    end
+end)
 
 
 
