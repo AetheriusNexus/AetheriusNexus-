@@ -1154,6 +1154,9 @@ AFSTab:AddToggle("AFSAutoTrain", {
 -- ============================================================
 -- TAB 14 — NATURAL DISASTER SURVIVAL (Underrated Classic)
 -- ============================================================
+-- PUT THIS LINE AT THE TOP OF EVERY FEATURE TAB CALLBACK
+if not _G.Authorized then return end
+
 local NDSTab = Window:AddTab({ Title = "NDS", Icon = "cloud-lightning" })
 
 NDSTab:AddParagraph({
