@@ -72,9 +72,7 @@ local function requireAuth() return _G.Authorized end
 -- ============================================================
 -- LOAD FLUENT
 -- ============================================================
-local Fluent
-local SaveManager
-local InterfaceManager
+local Fluent, SaveManager, InterfaceManager
 
 local ok, err = pcall(function()
     Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -97,19 +95,50 @@ local Window = Fluent:CreateWindow({
     Size     = UDim2.fromOffset(620, 500),
     Acrylic  = false,
     Theme    = "Dark",
-    MinimizeKey = Enum.KeyCode.LeftControl, -- SET THIS TO LEFT CONTROL
+    MinimizeKey = Enum.KeyCode.LeftControl 
 })
 
--- This removes the weird "Headset" icon and replaces it with a clean one
--- It also fixes the 'Force Leave' issue by defining what happens when minimized
-Fluent.MinimizeButton:SetIcon("menu") -- Changes the icon to a menu burger
-Fluent.MinimizeButton.Visible = true
--- This ensures the button actually toggles the UI visibility
+-- HIDE THE GLITCHED DEFAULT BUTTONS
+Fluent.MinimizeButton.Visible = false 
+
+-- ============================================================
+-- CUSTOM AE TOGGLE BUTTON (FIXES DISCONNECT ICON)
+-- ============================================================
+local ScreenGui = Instance.new("ScreenGui")
+local ToggleButton = Instance.new("ImageButton")
+local UICorner = Instance.new("UICorner")
+
+ScreenGui.Name = "AetheriusToggleUI"
+ScreenGui.Parent = (game:GetService("CoreGui") or game:GetService("Players").LocalPlayer.PlayerGui)
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ToggleButton.BorderSizePixel = 0
+ToggleButton.Position = UDim2.new(0, 15, 0.5, -25)
+ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+ToggleButton.Image = "rbxassetid://15124036622" -- This is your AE Logo
+ToggleButton.Draggable = true 
+
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = ToggleButton
+
+-- Toggle Logic for Button & Keybind
+local function ToggleUI()
+    if Window then
+        Window:Minimize()
+    end
+end
+
+ToggleButton.MouseButton1Click:Connect(ToggleUI)
+
 UserInputService.InputBegan:Connect(function(input, processed)
     if input.KeyCode == Enum.KeyCode.LeftControl and not processed then
-        Window:Minimize() -- This toggles the window state
+        ToggleUI()
     end
 end)
+-- ============================================================
 
 
 
