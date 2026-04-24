@@ -744,8 +744,8 @@ MM2Tab:AddToggle("MM2RoleESP", {
 })
 
 MM2Tab:AddToggle("MM2CoinFarm", {
-    Title    = "Auto Collect Coins",
-    Description = "Continuously teleports coins to you",
+    Title    = "Auto Coin Farm (Deep Scan)",
+    Description = "Actively hunts for the CoinContainer in the Map",
     Default  = false,
     Callback = function(v)
         if not _G.Authorized then return end
@@ -753,16 +753,17 @@ MM2Tab:AddToggle("MM2CoinFarm", {
         
         task.spawn(function()
             while _G.CoinFarm do
-                local char = LocalPlayer.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
+                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if root then
-                    -- Search in the 'Map' folder where MM2 spawns coins
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj.Name == "CoinContainer" or obj.Name == "Coin" then
-                            for _, coin in pairs(obj:GetChildren()) do
-                                if coin:IsA("BasePart") then
-                                    coin.CFrame = root.CFrame
-                                    task.wait(0.05) -- Prevent lag
+                    -- Aggressive scan for MM2's dynamic coin folder
+                    local container = workspace:FindFirstChild("CoinContainer", true) 
+                    if container then
+                        for _, coin in pairs(container:GetChildren()) do
+                            if coin:IsA("BasePart") or coin:IsA("Model") then
+                                local target = coin:IsA("Model") and coin.PrimaryPart or coin
+                                if target then
+                                    target.CFrame = root.CFrame
+                                    task.wait(0.01) -- Speed vacuum
                                 end
                             end
                         end
@@ -774,29 +775,54 @@ MM2Tab:AddToggle("MM2CoinFarm", {
     end,
 })
 
--- ============================================================
--- TAB 8 — JAILBREAK
--- ============================================================
-local JailTab = Window:AddTab({ Title = "Jailbreak", Icon = "lock-open" })
 
-JailTab:AddButton({
-    Title    = "TP to Jewelry Store",
+-- ============================================================
+-- TAB 8 — LUMBER TYCOON 2 (OG REPLACEMENT)
+-- ============================================================
+local LumberTab = Window:AddTab({ Title = "Lumber Tycoon 2", Icon = "tree" })
+
+LumberTab:AddParagraph({
+    Title   = "Lumber Tycoon 2 Utilities",
+    Content = "Wood TP, water walking, and plot tools.",
+})
+
+LumberTab:AddButton({
+    Title    = "Teleport to Wood Wood",
     Callback = function()
         if not _G.Authorized then return end
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(133, 18, 1315)
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = CFrame.new(270, 3, -420)
         end
     end,
 })
 
-local JBCarSpeed = false
-JailTab:AddToggle("JBSpeedCar", {
-    Title    = "Vehicle Speed Boost",
+LumberTab:AddToggle("WaterWalk", {
+    Title    = "Walk on Water",
+    Description = "Solidifies water so you don't sink",
     Default  = false,
     Callback = function(v)
         if not _G.Authorized then return end
-        JBCarSpeed = v
+        local water = workspace:FindFirstChild("Water")
+        if water and water:IsA("BasePart") then
+            water.CanCollide = v
+        end
+    end,
+})
+
+LumberTab:AddButton({
+    Title    = "Bring All Loose Wood",
+    Description = "Teleports unanchored wood to your plot",
+    Callback = function()
+        if not _G.Authorized then return end
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj.Name == "WoodLog" and obj:IsA("BasePart") and not obj.Anchored then
+                    obj.CFrame = root.CFrame + Vector3.new(0, 5, 0)
+                end
+            end
+        end
     end,
 })
 
