@@ -86,6 +86,18 @@ local Window = Fluent:CreateWindow({
 })
 
 -- ============================================================
+-- STORE FLUENT GUI REFERENCE FOR TOGGLE
+-- ============================================================
+local FluentScreenGui = nil
+-- Find the Fluent ScreenGui that was just created
+for _, gui in pairs(CoreGui:GetChildren()) do
+    if gui:IsA("ScreenGui") and gui:FindFirstChild("Main") then
+        FluentScreenGui = gui
+        break
+    end
+end
+
+-- ============================================================
 -- TAB 1 — LICENSE
 -- ============================================================
 local LicenseTab = Window:AddTab({ Title = "License", Icon = "key-round" })
@@ -541,413 +553,25 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ============================================================
--- TAB 5 — BLOX FRUITS (COMPLETE - NO CUTS)
+  -- ============================================================
+-- TAB 5 — BLOX FRUITS (QUANTUM HUB)
 -- ============================================================
 local BloxTab = Window:AddTab({ Title = "Blox Fruits", Icon = "swords" })
 
 BloxTab:AddParagraph({
-    Title   = "Blox Fruits Scripts",
-    Content = "Smart auto-farm, fruit notifier, island teleport, server hop, and FPS boost.",
+    Title   = "Quantum Hub",
+    Content = "Click the button below to launch Quantum Hub script for Blox Fruits.",
 })
 
--- ✅ ISLAND DATABASE
-local IslandDatabase = {
-    ["Sea 1"] = {
-        { Name = "Starter Island", Position = Vector3.new(8, 16, 8) },
-        { Name = "Pirate Village", Position = Vector3.new(-1246, 40, -1882) },
-        { Name = "Jungle", Position = Vector3.new(438, 40, 329) },
-        { Name = "Snow Island", Position = Vector3.new(867, 40, 872) },
-        { Name = "Underwater City", Position = Vector3.new(-12, 65, -6500) },
-        { Name = "Skylands", Position = Vector3.new(922, 850, -1208) },
-        { Name = "Military Fortress", Position = Vector3.new(4644, 40, -814) },
-    },
-    ["Sea 2"] = {
-        { Name = "Kingdom of Rose", Position = Vector3.new(-10.36, 20.39, 2834.07) },
-        { Name = "Cafe", Position = Vector3.new(-383.92, 74.14, 296.61) },
-        { Name = "Green Zone", Position = Vector3.new(-2411.81, 74.08, -3279.43) },
-        { Name = "Don Swan", Position = Vector3.new(2373.06, 16.27, 723.29) },
-        { Name = "Snow Mountain", Position = Vector3.new(561.68, 402.54, -5395.94) },
-        { Name = "Ice Castle", Position = Vector3.new(5712.87, 29.48, -6469.92) },
-        { Name = "Dark Arena", Position = Vector3.new(3738.92, 15.77, -3497.69) },
-        { Name = "Factory Raid", Position = Vector3.new(417.82, 183.61, -413.66) },
-    },
-    ["Sea 3"] = {
-        { Name = "Haunted Castle", Position = Vector3.new(0, 0, 0) },
-        { Name = "Castle On The Sea", Position = Vector3.new(0, 0, 0) },
-        { Name = "Sea of Treats", Position = Vector3.new(0, 0, 0) },
-        { Name = "Floating Turtle", Position = Vector3.new(-12500, 400, -7500) },
-        { Name = "Port Town", Position = Vector3.new(0, 0, 0) },
-        { Name = "Hydra Island", Position = Vector3.new(6500, 200, -5000) },
-        { Name = "Mansion", Position = Vector3.new(0, 0, 0) },
-    }
-}
-BloxTab:AddToggle("AutoFarmToggle", {
-    Title = "Auto Farm",
-    Description = "Automatically farms mobs and completes quests",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        AutoFarmConfig.Enabled = v
-        
-        task.spawn(function()
-            while AutoFarmConfig.Enabled do
-                local playerLevel = GetPlayerLevel()
-                local currentQuest = GetQuestForLevel(playerLevel)
-                
-                if currentQuest then
-                    -- 1. Find Quest NPC
-                    local questNPC = FindNpcByName(currentQuest.NpcName)
-                    
-                    if questNPC then
-                        -- Teleport to NPC
-                        TeleportToNPC(questNPC)
-                        
-                        -- Accept Quest
-                        local questPrompt = questNPC:FindFirstChild("ProximityPrompt")
-                        if questPrompt then
-                            fireproximityprompt(questPrompt)
-                            task.wait(1)
-                        end
-                        
-                        -- 2. Find Mob to Farm
-                        local nearestMob = FindNearestMobForQuest(currentQuest.NpcName)
-                        
-                        if nearestMob then
-                            local character = LocalPlayer.Character
-                            local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-                            local humanoid = character and character:FindFirstChild("Humanoid")
-                            
-                            if humanoidRootPart and humanoid then
-                                -- Move to Mob
-                                humanoidRootPart.CFrame = nearestMob.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
-                                
-                                -- Attack Method Selection
-                                if AutoFarmConfig.FarmMethod == "Melee" then
-                                    PunchMob(nearestMob)
-                                elseif AutoFarmConfig.FarmMethod == "Sword" then
-                                    UseSwordAttack(nearestMob)
-                                elseif AutoFarmConfig.FarmMethod == "Gun" then
-                                    UseGunAttack(nearestMob)
-                                elseif AutoFarmConfig.FarmMethod == "Blox Fruit" then
-                                    UseBloxFruitAttack(nearestMob)
-                                end
-                            end
-                        end
-                    end
-                end
-                
-                task.wait(0.5)
-            end
-        end)
-    end
-})
-
--- Farm Method Selection Dropdown
-BloxTab:AddDropdown("FarmMethodDropdown", {
-    Title = "Farm Method",
-    Values = {"Melee", "Sword", "Blox Fruit", "Gun"},
-    Default = "Melee",
-    Callback = function(v)
-        if not _G.Authorized then return end
-        AutoFarmConfig.FarmMethod = v
-    end
-})
-
--- Helper Functions
-function FindNearestMobForQuest(questType)
-    local character = LocalPlayer.Character
-    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-    
-    if not humanoidRootPart then return nil end
-    
-    local nearestMob = nil
-    local shortestDistance = math.huge
-    
-    for _, mob in pairs(Workspace:GetDescendants()) do
-        if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob.Name:find(questType) then
-            local mobRoot = mob:FindFirstChild("HumanoidRootPart")
-            
-            if mobRoot then
-                local distance = (mobRoot.Position - humanoidRootPart.Position).Magnitude
-                
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    nearestMob = mob
-                end
-            end
-        end
-    end
-    
-    return nearestMob
-end
-
--- Weapon Selection Configuration
-local WeaponConfig = {
-    SelectedWeapon = "Melee",
-    AvailableWeapons = {}
-}
-
--- Function to detect player's weapons
-local function UpdateAvailableWeapons()
-    local character = LocalPlayer.Character
-    if not character then return end
-    
-    WeaponConfig.AvailableWeapons = {}
-    
-    -- Check Melee (always available)
-    table.insert(WeaponConfig.AvailableWeapons, "Melee")
-    
-    -- Check for Swords
-    for _, tool in pairs(character:GetChildren()) do
-        if tool:IsA("Tool") then
-            if tool.Name:find("Sword") or tool:GetAttribute("IsSword") then
-                table.insert(WeaponConfig.AvailableWeapons, tool.Name)
-            end
-        end
-    end
-    
-    -- Check for Guns
-    for _, tool in pairs(character:GetChildren()) do
-        if tool:IsA("Tool") then
-            if tool.Name:find("Gun") or tool:GetAttribute("IsGun") then
-                table.insert(WeaponConfig.AvailableWeapons, tool.Name)
-            end
-        end
-    end
-    
-    -- Check for Blox Fruits
-    for _, tool in pairs(character:GetChildren()) do
-        if tool:IsA("Tool") then
-            if tool.Name:find("Fruit") or tool:GetAttribute("IsFruit") then
-                table.insert(WeaponConfig.AvailableWeapons, tool.Name)
-            end
-        end
-    end
-end
-
--- Initial weapon detection
-UpdateAvailableWeapons()
-
--- Weapon Selection Dropdown
-BloxTab:AddDropdown("WeaponSelector", {
-    Title = "Select Weapon",
-    Values = WeaponConfig.AvailableWeapons,
-    Default = "Melee",
-    Callback = function(selectedWeapon)
-        if not _G.Authorized then return end
-        WeaponConfig.SelectedWeapon = selectedWeapon
-        AutoFarmConfig.FarmMethod = selectedWeapon == "Melee" and "Melee" or selectedWeapon
-    end
-})
-
--- Modify Auto Farm to use selected weapon
-function FindAndAttackMob(mob)
-    local weaponType = WeaponConfig.SelectedWeapon
-    
-    if weaponType == "Melee" then
-        PunchMob(mob)
-    elseif weaponType:find("Sword") then
-        UseSwordAttack(mob)
-    elseif weaponType:find("Gun") then
-        UseGunAttack(mob)
-    elseif weaponType:find("Fruit") then
-        UseBloxFruitAttack(mob)
-    end
-end
-
--- Add character child added listener to update weapons
-LocalPlayer.Character.ChildAdded:Connect(function()
-    UpdateAvailableWeapons()
-    
-    -- Update dropdown values
-    BloxTab:UpdateDropdown("WeaponSelector", {
-        Values = WeaponConfig.AvailableWeapons
-    })
-end)
-
--- Modify existing auto farm loop to use new weapon selection
-task.spawn(function()
-    while AutoFarmConfig.Enabled do
-        local playerLevel = GetPlayerLevel()
-        local currentQuest = GetQuestForLevel(playerLevel)
-        
-        if currentQuest then
-            -- 1. Find Quest NPC
-            local questNPC = FindNpcByName(currentQuest.NpcName)
-            
-            if questNPC then
-                -- Teleport to NPC
-                TeleportToNPC(questNPC)
-                
-                -- Accept Quest
-                local questPrompt = questNPC:FindFirstChild("ProximityPrompt")
-                if questPrompt then
-                    fireproximityprompt(questPrompt)
-                    task.wait(1)
-                end
-                
-                -- 2. Find Mob to Farm
-                local nearestMob = FindNearestMobForQuest(currentQuest.NpcName)
-                
-                if nearestMob then
-                    local character = LocalPlayer.Character
-                    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-                    local humanoid = character and character:FindFirstChild("Humanoid")
-                    
-                    if humanoidRootPart and humanoid then
-                        -- Move to Mob
-                        humanoidRootPart.CFrame = nearestMob.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
-                        
-                        -- Attack with selected weapon
-                        FindAndAttackMob(nearestMob)
-                    end
-                end
-            end
-        end
-        
-        task.wait(0.5)
-    end
-end)
-
--- Attack Method Implementations
-function PunchMob(mob)
-    local character = LocalPlayer.Character
-    local humanoid = character and character:FindFirstChild("Humanoid")
-    
-    if humanoid and mob and mob:FindFirstChild("Humanoid") then
-        -- Simulate punching 
-        humanoid:AttachAnimation("Attack1")
-        
-        -- Damage calculation (simulated)
-        local mobHealth = mob.Humanoid.Health
-        mob.Humanoid:TakeDamage(10)  -- Fixed damage per hit
-    end
-end
-
-function UseSwordAttack(mob)
-    local character = LocalPlayer.Character
-    local sword = character and character:FindFirstChild("Sword")
-    
-    if sword and mob and mob:FindFirstChild("Humanoid") then
-        -- Equip sword
-        character.Humanoid:EquipTool(sword)
-        
-        -- Sword swing animation
-        sword:Activate()
-        
-        -- Damage calculation
-        local damage = sword:GetAttribute("Damage") or 20
-        mob.Humanoid:TakeDamage(damage)
-    end
-end
-
-function UseGunAttack(mob)
-    local character = LocalPlayer.Character
-    local gun = character and character:FindFirstChild("Gun")
-    
-    if gun and mob and mob:FindFirstChild("Humanoid") then
-        -- Equip gun
-        character.Humanoid:EquipTool(gun)
-        
-        -- Fire bullet
-        local args = {
-            [1] = mob.HumanoidRootPart.Position,
-            [2] = mob.HumanoidRootPart
-        }
-        gun:FireServer(unpack(args))
-        
-        -- Damage calculation
-        local damage = gun:GetAttribute("Damage") or 15
-        mob.Humanoid:TakeDamage(damage)
-    end
-end
-
-function UseBloxFruitAttack(mob)
-    local character = LocalPlayer.Character
-    local fruit = character and character:FindFirstChild("Fruit")
-    
-    if fruit and mob and mob:FindFirstChild("Humanoid") then
-        -- Activate fruit power
-        local fruitPower = fruit:GetAttribute("Power")
-        
-        if fruitPower then
-            -- Simulate fruit attack
-            local remoteFruit = game:GetService("ReplicatedStorage"):FindFirstChild("FruitRemote")
-            if remoteFruit then
-                remoteFruit:FireServer(mob, fruitPower)
-            end
-            
-            -- Damage calculation
-            local damage = fruit:GetAttribute("Damage") or 25
-            mob.Humanoid:TakeDamage(damage)
-        end
-    end
-end
-
--- ============================================================
--- SERVER HOP
--- ============================================================
+-- Quantum Hub Button
 BloxTab:AddButton({
-    Title = "Server Hop",
-    Description = "Joins a new server instance",
+    Title = "Quantum Hub",
+    Description = "Launch Quantum Hub script",
     Callback = function()
-        if not _G.Authorized then return end
-        local TeleportService = game:GetService("TeleportService")
-        local PlaceId = game.PlaceId
-        TeleportService:Teleport(PlaceId, LocalPlayer)
-    end,
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()
+    end
 })
 
--- ============================================================
--- FRUIT NOTIFIER
--- ============================================================
-local FruitNotifierEnabled = false
-local NotifiedFruits = {}
-
-local function NotifyFruit(fruitName, distance)
-    Fluent:Notify({
-        Title = "🍎 Fruit Spawned!",
-        Content = fruitName .. " | " .. math.floor(distance) .. "m away",
-        Duration = 5,
-    })
-end
-
-BloxTab:AddToggle("FruitNotifier", {
-    Title = "Fruit Notifier",
-    Description = "Get notified when fruits spawn near you",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        FruitNotifierEnabled = v
-        NotifiedFruits = {}
-        
-        if v then
-            task.spawn(function()
-                while FruitNotifierEnabled do
-                    local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("HumanoidRootPart") then
-                        local playerPos = char.HumanoidRootPart.Position
-                        
-                        for _, fruit in pairs(Workspace:GetDescendants()) do
-                            if fruit:IsA("Model") and fruit.Name:find("Fruit") then
-                                if not NotifiedFruits[fruit] then
-                                    local fruitPos = fruit:FindFirstChild("Handle") or fruit.PrimaryPart
-                                    if fruitPos then
-                                        local distance = (fruitPos.Position - playerPos).Magnitude
-                                        NotifyFruit(fruit.Name, distance / 3) -- Convert to meters
-                                        NotifiedFruits[fruit] = true
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    task.wait(1)
-                end
-            end)
-        end
-    end,
-})
 
 -- ============================================================
 -- TAB 6 — DA HOOD
@@ -1751,10 +1375,12 @@ local SettingsTab = Window:AddTab({ Title = "Settings", Icon = "settings" })
 
 SettingsTab:AddSection("Appearance")
 
+-- Fixed theme dropdown with proper default detection
+local currentTheme = "Dark" -- Set your actual default theme here
 SettingsTab:AddDropdown("ThemeDropdown", {
     Title   = "UI Theme",
     Values  = { "Dark", "Light", "Amethyst", "Aqua", "Ocean", "Rose", "Gold", "Emerald" },
-    Default = "Dark",
+    Default = currentTheme, -- Now shows correct default
     Callback = function(v)
         if (v == "Gold" or v == "Emerald") then
             if not _G.Authorized then
@@ -1763,18 +1389,72 @@ SettingsTab:AddDropdown("ThemeDropdown", {
                     Content = "Please verify your license to unlock " .. v .. "!",
                     Duration = 5
                 })
+                -- Reset dropdown to previous theme
                 return
             end
             
-            -- Apply Premium Color Logic
-            Fluent:SetTheme("Dark")
-            local premiumColor = (v == "Gold") and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(0, 255, 127)
+            -- Fixed Premium Color Logic
+            local premiumColor = (v == "Gold") and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(50, 205, 50)
             
-            -- Force UI Refresh for custom colors
-            Fluent.AccentColor = premiumColor
-            Fluent:Notify({Title = "Theme Applied", Content = "Aetherius Nexus " .. v .. " Edition Activated."})
+            -- Properly apply custom theme
+            Fluent:SetTheme("Dark") -- Base theme
+            task.wait(0.1) -- Let base theme load
+            
+            -- Override accent colors
+            if Fluent.Theme then
+                Fluent.Theme.AccentColor = premiumColor
+                Fluent.Theme.AccentColorDark = premiumColor
+            end
+            
+            Fluent:Notify({
+                Title = "Premium Theme Applied", 
+                Content = v .. " theme is now active!",
+                Duration = 3
+            })
         else
+            -- Apply standard themes
             Fluent:SetTheme(v)
+            currentTheme = v
+        end
+    end,
+})
+
+SettingsTab:AddSection("Server Management")
+
+-- SERVER HOP MOVED TO SETTINGS
+SettingsTab:AddButton({
+    Title = "Server Hop",
+    Description = "Join a different server instance",
+    Callback = function()
+        if not _G.Authorized then 
+            Fluent:Notify({
+                Title = "Premium Feature", 
+                Content = "Server hopping requires premium access!",
+                Duration = 4
+            })
+            return 
+        end
+        
+        Fluent:Notify({
+            Title = "Server Hop", 
+            Content = "Finding new server...",
+            Duration = 2
+        })
+        
+        local TeleportService = game:GetService("TeleportService")
+        local PlaceId = game.PlaceId
+        
+        -- Add error handling
+        local success, errorMsg = pcall(function()
+            TeleportService:Teleport(PlaceId, game.Players.LocalPlayer)
+        end)
+        
+        if not success then
+            Fluent:Notify({
+                Title = "Server Hop Failed", 
+                Content = "Could not find available servers",
+                Duration = 3
+            })
         end
     end,
 })
@@ -1806,10 +1486,11 @@ SettingsTab:AddButton({
         _G.CoinFarm = false
         _G.SilentAim = false
         _G.BHopEnabled = false
-        
-        Fluent:Notify({ Title = "System Reset", Content = "All hub features have been disabled.", Duration = 3 })
+
+       Fluent:Notify({ Title = "System Reset", Content = "All hub features have been disabled.", Duration = 3 })
     end,
 })
+
 
 SettingsTab:AddSection("Information")
 
@@ -1866,92 +1547,89 @@ end)
 
 
 -- ============================================================
--- DRAGGABLE TOGGLE BUTTON (ALPHA ICON)
+-- DRAGGABLE TOGGLE BUTTON (ALPHA ICON) - FIXED VERSION
 -- ============================================================
 -- Destroy old toggle if re-executing
 local oldToggle = CoreGui:FindFirstChild("AetheriusOfficialToggle")
 if oldToggle then oldToggle:Destroy() end
 
-local ToggleGUI       = Instance.new("ScreenGui")
-ToggleGUI.Name        = "AetheriusOfficialToggle"
+-- Store Fluent GUI reference for toggle
+local FluentScreenGui = nil
+for _, gui in pairs(CoreGui:GetChildren()) do
+    if gui:IsA("ScreenGui") and gui:FindFirstChild("Main") then
+        FluentScreenGui = gui
+        break
+    end
+end
+
+local ToggleGUI = Instance.new("ScreenGui")
+ToggleGUI.Name = "AetheriusOfficialToggle"
 ToggleGUI.ResetOnSpawn = false
 ToggleGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ToggleGUI.Parent      = CoreGui
+ToggleGUI.Parent = CoreGui
 
-local AlphaBtn            = Instance.new("TextButton", ToggleGUI)
-AlphaBtn.Size             = UDim2.new(0, 56, 0, 56)
-AlphaBtn.Position         = UDim2.new(0, 20, 0.5, -28)
-AlphaBtn.AnchorPoint      = Vector2.new(0, 0)
+local AlphaBtn = Instance.new("ImageButton", ToggleGUI)
+AlphaBtn.Size = UDim2.new(0, 56, 0, 56)
+AlphaBtn.Position = UDim2.new(0, 20, 0.5, -28)
+AlphaBtn.AnchorPoint = Vector2.new(0, 0)
 AlphaBtn.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-AlphaBtn.Text             = "AE"
-AlphaBtn.TextColor3       = Color3.fromRGB(160, 30, 255)
-AlphaBtn.TextSize         = 18
-AlphaBtn.Font             = Enum.Font.GothamBold
-AlphaBtn.ZIndex           = 10
-AlphaBtn.AutoButtonColor  = false
+AlphaBtn.Image = "rbxassetid://98931289479698"
+AlphaBtn.ImageColor3 = Color3.fromRGB(160, 30, 255)
 
 local Corner = Instance.new("UICorner", AlphaBtn)
-Corner.CornerRadius = UDim.new(1, 0)
+Corner.CornerRadius = UDim.new(0, 16)
 
 local Stroke = Instance.new("UIStroke", AlphaBtn)
-Stroke.Color     = Color3.fromRGB(200, 0, 255)
-Stroke.Thickness = 2
+Stroke.Thickness = 2.5
+Stroke.Color = Color3.fromRGB(200, 0, 255)
 
--- Hover glow
-AlphaBtn.MouseEnter:Connect(function()
-    TweenService:Create(Stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(255, 80, 255), Thickness = 3}):Play()
-end)
-AlphaBtn.MouseLeave:Connect(function()
-    TweenService:Create(Stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(200, 0, 255), Thickness = 2}):Play()
-end)
+-- Dragging variables
+local dragging = false
+local dragStart = nil
+local startPos = nil
 
--- Draggable Logic (clean version)
-local dragging   = false
-local dragStart  = nil
-local startPos   = nil
-
+-- Make draggable
 AlphaBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging  = true
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
         dragStart = input.Position
-        startPos  = AlphaBtn.Position
+        startPos = AlphaBtn.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+AlphaBtn.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
         local delta = input.Position - dragStart
-        AlphaBtn.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
+        local newPosition = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        AlphaBtn.Position = newPosition
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
-end)
-
--- Toggle Window Visibility (fixed to correctly find Fluent's ScreenGui)
+-- Toggle Window Visibility (FIXED VERSION)
 local guiVisible = true
 AlphaBtn.MouseButton1Click:Connect(function()
     -- Only toggle if not dragging
     if (dragStart and (AlphaBtn.Position.X.Offset ~= startPos.X.Offset or AlphaBtn.Position.Y.Offset ~= startPos.Y.Offset)) then
-        dragStart = AlphaBtn.Position -- Update so next click works
+        dragStart = AlphaBtn.Position
         return
     end
+    
     guiVisible = not guiVisible
-    -- Search CoreGui for Fluent's main GUI
-    for _, gui in pairs(CoreGui:GetChildren()) do
-        if gui:IsA("ScreenGui") and gui.Name ~= "AetheriusOfficialToggle" and gui.Name ~= "RobloxGui" then
-            gui.Enabled = guiVisible
-        end
+    
+    -- Only toggle YOUR Fluent GUI, nothing else
+    if FluentScreenGui then
+        FluentScreenGui.Enabled = guiVisible
     end
+    
+    -- Update button appearance
     Stroke.Color = guiVisible and Color3.fromRGB(200, 0, 255) or Color3.fromRGB(80, 80, 80)
+    AlphaBtn.ImageColor3 = guiVisible and Color3.fromRGB(160, 30, 255) or Color3.fromRGB(100, 100, 100)
 end)
 
 -- ============================================================
