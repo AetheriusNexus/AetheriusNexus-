@@ -39,14 +39,80 @@ _G.FlyEnabled       = false
 _G.FlySpeed         = 50
 
 -- ============================================================
--- VALID KEYS
+-- KEY VALIDATION SYSTEM WITH WEBSITE INTEGRATION
 -- ============================================================
-local VALID_KEYS = {
+local HttpService = game:GetService("HttpService")
+
+-- Hardcoded premium keys (permanent)
+local PREMIUM_KEYS = {
     ["A3TH3R1USN3XUS77821X902L"]        = true,
     ["AETHERIUS-NEXUS-FREE-2025"]        = true,
     ["NEXUS-VANGUARD-ELITE-X99"]         = true,
     ["AETHERKEY-UNLOCK-0001"]            = true,
 }
+
+-- Website URL for key validation
+local GATEWAY_URL = "https://6e36ccc6-1ba9-4d32-acc1-c77212944542-00-1sweu4pulyk66.picard.replit.dev"
+
+-- Function to validate key from website
+local function validateWebsiteKey(key)
+    local success, response = pcall(function()
+        local url = GATEWAY_URL .. "/validate?key=" .. HttpService:UrlEncode(key)
+        return HttpService:GetAsync(url)
+    end)
+    
+    if success then
+        local data = HttpService:JSONDecode(response)
+        return data.valid == true
+    end
+    
+    return false
+end
+
+-- Function to check if key is valid (premium or website)
+local function isValidKey(key)
+    -- Check premium keys first
+    if PREMIUM_KEYS[key] then
+        return true, "premium"
+    end
+    
+    -- Check website keys
+    if validateWebsiteKey(key) then
+        return true, "website"
+    end
+    
+    return false, "invalid"
+end
+
+-- Key validation function for your script
+local function validateKey(inputKey)
+    local valid, keyType = isValidKey(inputKey)
+    
+    if valid then
+        if keyType == "premium" then
+            print("✅ Premium key accepted - Unlimited access")
+        else
+            print("✅ Website key accepted - 24hr access")
+        end
+        return true
+    else
+        print("❌ Invalid key - Please try again")
+        return false
+    end
+end
+
+-- Example usage in your key input system:
+--[[
+local userKey = "USER_INPUT_HERE"
+if validateKey(userKey) then
+    -- Proceed with script execution
+    print("Access granted!")
+else
+    -- Deny access
+    print("Access denied!")
+end
+--]]
+
 -- ============================================================
 -- AETHERIUS CORE: AUTHENTICATION
 -- ============================================================
