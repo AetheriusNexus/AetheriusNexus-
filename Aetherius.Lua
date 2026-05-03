@@ -1545,22 +1545,12 @@ task.spawn(function()
     end
 end)
 
-
 -- ============================================================
 -- DRAGGABLE TOGGLE BUTTON (ALPHA ICON) - FIXED VERSION
 -- ============================================================
 -- Destroy old toggle if re-executing
 local oldToggle = CoreGui:FindFirstChild("AetheriusOfficialToggle")
 if oldToggle then oldToggle:Destroy() end
-
--- Store Fluent GUI reference for toggle
-local FluentScreenGui = nil
-for _, gui in pairs(CoreGui:GetChildren()) do
-    if gui:IsA("ScreenGui") and gui:FindFirstChild("Main") then
-        FluentScreenGui = gui
-        break
-    end
-end
 
 local ToggleGUI = Instance.new("ScreenGui")
 ToggleGUI.Name = "AetheriusOfficialToggle"
@@ -1611,7 +1601,7 @@ AlphaBtn.InputChanged:Connect(function(input)
     end
 end)
 
--- Toggle Window Visibility (FIXED VERSION)
+-- Toggle Window Visibility (Simulates LeftControl press)
 local guiVisible = true
 AlphaBtn.MouseButton1Click:Connect(function()
     -- Only toggle if not dragging
@@ -1622,15 +1612,17 @@ AlphaBtn.MouseButton1Click:Connect(function()
     
     guiVisible = not guiVisible
     
-    -- Only toggle YOUR Fluent GUI, nothing else
-    if FluentScreenGui then
-        FluentScreenGui.Enabled = guiVisible
-    end
+    -- Simulate LeftControl key press to trigger Fluent's built-in toggle
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+    wait(0.1)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
     
     -- Update button appearance
     Stroke.Color = guiVisible and Color3.fromRGB(200, 0, 255) or Color3.fromRGB(80, 80, 80)
     AlphaBtn.ImageColor3 = guiVisible and Color3.fromRGB(160, 30, 255) or Color3.fromRGB(100, 100, 100)
 end)
+
 
 -- ============================================================
 -- STARTUP
