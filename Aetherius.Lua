@@ -1,4 +1,4 @@
--- [[ AETHERIUS NEXUS | V15 ]] --
+-- [[ AETHERIUS NEXUS | V15.1 ]] --
 -- Rewritten & Fixed by Aetherius Studios
 -- Library: Fluent UI
 
@@ -143,7 +143,7 @@ if not ok or not Fluent then return warn("[AETHERIUS] Failed to load Fluent") en
 -- ============================================================
 local Window = Fluent:CreateWindow({
     Title    = "AETHERIUS NEXUS",
-    SubTitle = "V15 | by Aetherius Studios",
+    SubTitle = "V15.1 | by Aetherius Studios",
     TabWidth = 170,
     Size     = UDim2.fromOffset(620, 500),
     Acrylic  = false,
@@ -1407,23 +1407,28 @@ LuckyTab:AddButton({
 -- ============================================================
 -- TAB: ADMIN (DASHBOARD + ALL CATEGORIES)
 -- ============================================================
--- TAB: ADMIN (DASHBOARD + ALL CATEGORIES)
--- ============================================================
 local AdminTab = Window:AddTab({ Title = "Admin", Icon = "shield" })
+
+-- Utility function to fix your callback errors
+local function GetCharParts()
+    local c = LP.Character
+    if not c then return nil, nil, nil end
+    return c, c:FindFirstChild("HumanoidRootPart"), c:FindFirstChildOfClass("Humanoid")
+end
 
 -- SECTION 1: THE DYNAMIC PROFILE CARD
 AdminTab:AddSection("Aetherius OS Interface")
 
--- 1. AVATAR DISPLAY (This pulls your actual headshot)
+-- 1. AVATAR DISPLAY
 AdminTab:AddImage("UserHeadshot", {
     Image = "rbxthumb://type=AvatarHeadShot&id=" .. LP.UserId .. "&w=150&h=150",
     Size = UDim2.new(0, 60, 0, 60),
-    Rounding = 1 -- Makes the avatar a circular frame
+    Rounding = 1 
 })
 
--- 2. THE DYNAMIC GREETING (JARVIS Style)
+-- 2. THE DYNAMIC GREETING
 local GreetingLabel = AdminTab:AddParagraph({
-    Title   = "Initializing...", -- Will be updated by loop
+    Title   = "Initializing...", 
     Content = "Operator: " .. LP.DisplayName .. "\nLicense: " .. (_G.Authorized and "Premium Gold" or "Guest Access")
 })
 
@@ -1433,12 +1438,10 @@ local Dashboard = AdminTab:AddParagraph({
     Content = "Ping: Fetching... | FPS: Fetching...\nTime: --:--:-- | Session: 00:00:00" 
 })
 
--- UPDATE LOOP: GREETINGS, CLOCK, AND PERFORMANCE
+-- UPDATE LOOP
 task.spawn(function()
     local StartTime = tick()
-    
     while true do
-        -- A. TIME & GREETING LOGIC
         local currentHour = tonumber(os.date("%H"))
         local greeting = "Good Evening"
         
@@ -1450,11 +1453,9 @@ task.spawn(function()
         
         GreetingLabel:SetTitle(greeting .. ", " .. LP.DisplayName)
 
-        -- B. PERFORMANCE METRICS
         local ping = tonumber(string.format("%.0f", LP:GetNetworkPing() * 1000))
-        local fps  = tonumber(string.format("%.0f", 1/RunService.RenderStepped:Wait()))
+        local fps  = tonumber(string.format("%.0f", 1/game:GetService("RunService").RenderStepped:Wait()))
         
-        -- C. CLOCK & UPTIME
         local TimeString = os.date("%X")
         local diff = tick() - StartTime
         local hours = math.floor(diff / 3600)
@@ -1462,18 +1463,15 @@ task.spawn(function()
         local secs = math.floor(diff % 60)
         local Uptime = string.format("%02d:%02d:%02d", hours, mins, secs)
         
-        -- D. PUSH TO UI
         Dashboard:SetContent(
             "Latency: " .. ping .. "ms | Output: " .. fps .. " FPS\n" ..
             "Local Clock: " .. TimeString .. " | Session: " .. Uptime
         )
-        
         task.wait(1)
     end
 end)
 
-
--- SECTION 2: MOVEMENT (Speed, Fly, Noclip, etc.)
+-- SECTION 2: MOVEMENT
 AdminTab:AddSection("Movement & Physics")
 
 AdminTab:AddToggle("AdminFly", {
@@ -1483,42 +1481,20 @@ AdminTab:AddToggle("AdminFly", {
         if not _G.Authorized then return end
         _G.Flying = v
         local _, r, h = GetCharParts()
-        if v then
+        if v and r and h then
             h.PlatformStand = true
             local bp = Instance.new("BodyPosition", r)
             bp.MaxForce = Vector3.new(1e6, 1e6, 1e6)
             bp.Position = r.Position
             _G.FlyBP = bp
-            -- Add Fly logic here (WASD)
         else
             if _G.FlyBP then _G.FlyBP:Destroy() end
-            h.PlatformStand = false
+            if h then h.PlatformStand = false end
         end
     end
 })
 
-AdminTab:AddSlider("SpeedSlider", {
-    Title = "WalkSpeed", Min = 16, Max = 500, Default = 16,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        local _, _, h = GetCharParts()
-        if h then h.WalkSpeed = v end
-    end
-})
-
-AdminTab:AddToggle("InfJump", {
-    Title = "Infinite Jump",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.InfJ = v
-        UserInputService.JumpRequest:Connect(function()
-            if _G.InfJ then LP.Character.Humanoid:ChangeState("Jumping") end
-        end)
-    end
-})
-
--- SECTION 3: CHARACTER & SURVIVABILITY
+-- SECTION 3: CHARACTER
 AdminTab:AddSection("Character Mods")
 
 AdminTab:AddToggle("GodMode", {
@@ -1527,8 +1503,8 @@ AdminTab:AddToggle("GodMode", {
     Callback = function(v)
         if not _G.Authorized then return end
         _G.God = v
-        RunService.Heartbeat:Connect(function()
-            if _G.God and LP.Character:FindFirstChildOfClass("Humanoid") then
+        game:GetService("RunService").Heartbeat:Connect(function()
+            if _G.God and LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
                 LP.Character.Humanoid.Health = LP.Character.Humanoid.MaxHealth
             end
         end)
@@ -1540,13 +1516,15 @@ AdminTab:AddToggle("Invisibility", {
     Default = false,
     Callback = function(v)
         if not _G.Authorized then return end
-        for _, p in pairs(LP.Character:GetDescendants()) do
-            if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = v and 1 or 0 end
+        if LP.Character then
+            for _, p in pairs(LP.Character:GetDescendants()) do
+                if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = v and 1 or 0 end
+            end
         end
     end
 })
 
--- SECTION 4: VISUALS (The "Cool Things")
+-- SECTION 4: VISUALS
 AdminTab:AddSection("Visual Effects")
 
 AdminTab:AddToggle("RainbowBody", {
@@ -1557,8 +1535,10 @@ AdminTab:AddToggle("RainbowBody", {
         _G.Rainbow = v
         task.spawn(function()
             while _G.Rainbow do
-                for _, p in pairs(LP.Character:GetDescendants()) do
-                    if p:IsA("BasePart") then p.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end
+                if LP.Character then
+                    for _, p in pairs(LP.Character:GetDescendants()) do
+                        if p:IsA("BasePart") then p.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end
+                    end
                 end
                 task.wait()
             end
@@ -1570,13 +1550,15 @@ AdminTab:AddButton({
     Title = "Neon Skin",
     Callback = function()
         if not _G.Authorized then return end
-        for _, p in pairs(LP.Character:GetDescendants()) do
-            if p:IsA("BasePart") then p.Material = Enum.Material.Neon end
+        if LP.Character then
+            for _, p in pairs(LP.Character:GetDescendants()) do
+                if p:IsA("BasePart") then p.Material = Enum.Material.Neon end
+            end
         end
     end
 })
 
--- SECTION 5: WORLD & SERVER
+-- SECTION 5: WORLD
 AdminTab:AddSection("World Manipulation")
 
 AdminTab:AddSlider("TimeSlider", {
@@ -1595,11 +1577,11 @@ AdminTab:AddButton({
         game:GetService("Lighting").OutdoorAmbient = Color3.new(1,1,1)
     end
 })
+
 -- ============================================================
--- TAB: STALK & MIMIC (IDENTITY STEALING)
+-- TAB: STALK & MIMIC
 -- ============================================================
 local MimicTab = Window:AddTab({ Title = "Stalk & Mimic", Icon = "user-search" })
-
 MimicTab:AddSection("Avatar Cloning")
 
 local TargetUser = ""
@@ -1612,73 +1594,64 @@ MimicTab:AddInput("TargetInput", {
 
 MimicTab:AddButton({
     Title = "Mimic Player Avatar",
-    Description = "Clones any player's look using HumanoidDescription (Server-Visible in most games)",
+    Description = "Clones any player's look",
     Callback = function()
         if not _G.Authorized then return end
+        local Players = game:GetService("Players")
         local success, targetId = pcall(function() return Players:GetUserIdFromNameAsync(TargetUser) end)
-        
         if success then
             local _, _, h = GetCharParts()
             local humDesc = Players:GetHumanoidDescriptionFromUserId(targetId)
-            if h and humDesc then
-                h:ApplyDescription(humDesc)
-                Fluent:Notify({Title = "Mimic Success", Content = "Identity stolen from " .. TargetUser})
-            end
-        else
-            Fluent:Notify({Title = "Error", Content = "Username not found."})
+            if h and humDesc then h:ApplyDescription(humDesc) end
         end
     end
 })
 
 -- ============================================================
--- TAB: SERVER CHAOS (PHYSICS & EXPLOITS)
+-- TAB: SERVER CHAOS
 -- ============================================================
 local ChaosTab = Window:AddTab({ Title = "Server Chaos", Icon = "zap" })
-
 ChaosTab:AddSection("Advanced Physics Exploits")
 
 ChaosTab:AddToggle("MassFling", {
     Title = "Elite Mass Fling",
-    Description = "High-velocity rotation (Network Ownership abuse)",
     Default = false,
     Callback = function(v)
         if not _G.Authorized then return end
         _G.Flinging = v
         task.spawn(function()
-            local char, r, h = GetCharParts()
             while _G.Flinging do
-                -- Velocity spiking to glitch collision boxes
-                r.AngularVelocity = Vector3.new(0, 99999, 0)
-                r.Velocity = Vector3.new(math.random(-50,50), 0, math.random(-50,50))
-                -- Maintain ownership
-                sethiddenproperty(LP, "SimulationRadius", 1000)
+                local char, r = GetCharParts()
+                if r then
+                    r.AngularVelocity = Vector3.new(0, 99999, 0)
+                    r.Velocity = Vector3.new(math.random(-50,50), 0, math.random(-50,50))
+                    sethiddenproperty(LP, "SimulationRadius", 1000)
+                end
                 task.wait(0.05)
             end
-            r.AngularVelocity = Vector3.new(0,0,0)
         end)
     end
 })
 
 ChaosTab:AddButton({
     Title = "Void All Unanchored",
-    Description = "Instantly teleports every loose object to the void",
     Callback = function()
         if not _G.Authorized then return end
+        local char = LP.Character
         for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and not obj.Anchored and not obj:IsDescendantOf(char) then
+            if obj:IsA("BasePart") and not obj.Anchored and (not char or not obj:IsDescendantOf(char)) then
                 obj.CFrame = CFrame.new(0, -1000, 0)
             end
         end
     end
 })
 
-ChaosTab:AddSection("Teleportation Exploits")
-
+ChaosTab:AddSection("Teleportation")
 ChaosTab:AddButton({
     Title = "TP to Selected Player",
     Callback = function()
         if not _G.Authorized then return end
-        local target = Players:FindFirstChild(TargetUser)
+        local target = game:GetService("Players"):FindFirstChild(TargetUser)
         local _, r = GetCharParts()
         if target and target.Character and r then
             r.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
@@ -1688,19 +1661,20 @@ ChaosTab:AddButton({
 
 ChaosTab:AddToggle("KillAura", {
     Title = "Auto-Damage Aura (20 Studs)",
-    Description = "Scans for 'Hit' remotes and fires them on enemies",
     Default = false,
     Callback = function(v)
         if not _G.Authorized then return end
         _G.KA = v
         while _G.KA do
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= LP and p.Character then
-                    local dist = (p.Character.PrimaryPart.Position - LP.Character.PrimaryPart.Position).Magnitude
-                    if dist < 20 then
-                        local rem = game:GetService("ReplicatedStorage"):FindFirstChild("Hit", true) or 
-                                    game:GetService("ReplicatedStorage"):FindFirstChild("Damage", true)
-                        if rem then rem:FireServer(p.Character) end
+            for _, p in pairs(game:GetService("Players"):GetPlayers()) do
+                if p ~= LP and p.Character and p.Character:FindFirstChild("PrimaryPart") then
+                    local _, r = GetCharParts()
+                    if r then
+                        local dist = (p.Character.PrimaryPart.Position - r.Position).Magnitude
+                        if dist < 20 then
+                            local rem = game:GetService("ReplicatedStorage"):FindFirstChild("Hit", true) or game:GetService("ReplicatedStorage"):FindFirstChild("Damage", true)
+                            if rem then rem:FireServer(p.Character) end
+                        end
                     end
                 end
             end
