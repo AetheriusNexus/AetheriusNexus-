@@ -198,6 +198,316 @@ LicenseTab:AddButton({
 })
 
 -- ============================================================
+-- TAB: ADMIN (DASHBOARD + ALL CATEGORIES)
+-- ============================================================
+local LP = game:GetService("Players").LocalPlayer -- THIS LINE IS MISSING
+
+local AdminTab = Window:AddTab({ Title = "Admin", Icon = "shield" })
+
+-- Utility function to fix your callback errors
+local function GetCharParts()
+    local c = LP.Character
+    if not c then return nil, nil, nil end
+    return c, c:FindFirstChild("HumanoidRootPart"), c:FindFirstChildOfClass("Humanoid")
+end
+
+-- SECTION 1: THE DYNAMIC PROFILE CARD
+AdminTab:AddSection("Aetherius OS Interface")
+
+-- 1. AVATAR DISPLAY
+AdminTab:AddImage("UserHeadshot", {
+    -- Added a fallback (or 1) just in case the player object is slow to load
+    Image = "rbxthumb://type=AvatarHeadShot&id=" .. (LP and LP.UserId or 1) .. "&w=150&h=150",
+    Size = {60, 60},
+    Rounding = 1 
+})
+
+-- 2. THE DYNAMIC GREETING
+local GreetingLabel = AdminTab:AddParagraph({
+    Title   = "Initializing...", 
+    -- Added a fallback for DisplayName to prevent a crash
+    Content = "Operator: " .. (LP and LP.DisplayName or "User") .. "\nLicense: " .. (_G.Authorized and "Premium Gold" or "Guest Access")
+})
+
+
+-- 3. THE DATA HUB
+local Dashboard = AdminTab:AddParagraph({ 
+    Title = "System Metrics", 
+    Content = "Ping: Fetching... | FPS: Fetching...\nTime: --:--:-- | Session: 00:00:00" 
+})
+
+-- UPDATE LOOP
+task.spawn(function()
+    local StartTime = tick()
+    while true do
+        local currentHour = tonumber(os.date("%H"))
+        local greeting = "Good Evening"
+        
+        if currentHour >= 5 and currentHour < 12 then
+            greeting = "Good Morning"
+        elseif currentHour >= 12 and currentHour < 18 then
+            greeting = "Good Afternoon"
+        end
+        
+        GreetingLabel:SetTitle(greeting .. ", " .. LP.DisplayName)
+
+        local ping = tonumber(string.format("%.0f", LP:GetNetworkPing() * 1000))
+        local fps  = tonumber(string.format("%.0f", 1/game:GetService("RunService").RenderStepped:Wait()))
+        
+        local TimeString = os.date("%X")
+        local diff = tick() - StartTime
+        local hours = math.floor(diff / 3600)
+        local mins = math.floor((diff % 3600) / 60)
+        local secs = math.floor(diff % 60)
+        local Uptime = string.format("%02d:%02d:%02d", hours, mins, secs)
+        
+        Dashboard:SetContent(
+            "Latency: " .. ping .. "ms | Output: " .. fps .. " FPS\n" ..
+            "Local Clock: " .. TimeString .. " | Session: " .. Uptime
+        )
+        task.wait(1)
+    end
+end)
+
+-- SECTION 2: MOVEMENT
+AdminTab:AddSection("Movement & Physics")
+
+AdminTab:AddToggle("AdminFly", {
+    Title = "Flight Mode (Bypasses Gravity)",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.Flying = v
+        local _, r, h = GetCharParts()
+        if v and r and h then
+            h.PlatformStand = true
+            local bp = Instance.new("BodyPosition", r)
+            bp.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+            bp.Position = r.Position
+            _G.FlyBP = bp
+        else
+            if _G.FlyBP then _G.FlyBP:Destroy() end
+            if h then h.PlatformStand = false end
+        end
+    end
+})
+
+-- SECTION 3: CHARACTER
+AdminTab:AddSection("Character Mods")
+
+AdminTab:AddToggle("GodMode", {
+    Title = "Client God Mode",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.God = v
+        game:GetService("RunService").Heartbeat:Connect(function()
+            if _G.God and LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
+                LP.Character.Humanoid.Health = LP.Character.Humanoid.MaxHealth
+            end
+        end)
+    end
+})
+
+AdminTab:AddToggle("Invisibility", {
+    Title = "Invisibility (Client)",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        if LP.Character then
+            for _, p in pairs(LP.Character:GetDescendants()) do
+                if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = v and 1 or 0 end
+            end
+        end
+    end
+})
+
+-- SECTION 4: VISUALS
+AdminTab:AddSection("Visual Effects")
+
+AdminTab:AddToggle("RainbowBody", {
+    Title = "Rainbow Character",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.Rainbow = v
+        task.spawn(function()
+            while _G.Rainbow do
+                if LP.Character then
+                    for _, p in pairs(LP.Character:GetDescendants()) do
+                        if p:IsA("BasePart") then p.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end
+                    end
+                end
+                task.wait()
+            end
+        end)
+    end
+})
+
+AdminTab:AddButton({
+    Title = "Neon Skin",
+    Callback = function()
+        if not _G.Authorized then return end
+        if LP.Character then
+            for _, p in pairs(LP.Character:GetDescendants()) do
+                if p:IsA("BasePart") then p.Material = Enum.Material.Neon end
+            end
+        end
+    end
+})
+
+-- SECTION 5: WORLD
+AdminTab:AddSection("World Manipulation")
+
+AdminTab:AddSlider("TimeSlider", {
+    Title = "Time of Day", Min = 0, Max = 24, Default = 14,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        game:GetService("Lighting").TimeOfDay = string.format("%02d:00:00", v)
+    end
+})
+
+AdminTab:AddButton({
+    Title = "Full Bright",
+    Callback = function()
+        if not _G.Authorized then return end
+        game:GetService("Lighting").Brightness = 10
+        game:GetService("Lighting").OutdoorAmbient = Color3.new(1,1,1)
+    end
+})
+
+-- ============================================================
+-- TAB: STALK & MIMIC
+-- ============================================================
+local MimicTab = Window:AddTab({ Title = "Stalk & Mimic", Icon = "user-search" })
+MimicTab:AddSection("Avatar Cloning")
+
+local TargetUser = ""
+MimicTab:AddInput("TargetInput", {
+    Title = "Target Username",
+    Default = "",
+    Placeholder = "Enter exact username...",
+    Callback = function(v) TargetUser = v end
+})
+
+MimicTab:AddButton({
+    Title = "Mimic Player Avatar",
+    Description = "Clones any player's look",
+    Callback = function()
+        if not _G.Authorized then return end
+        local Players = game:GetService("Players")
+        local success, targetId = pcall(function() return Players:GetUserIdFromNameAsync(TargetUser) end)
+        if success then
+            local _, _, h = GetCharParts()
+            local humDesc = Players:GetHumanoidDescriptionFromUserId(targetId)
+            if h and humDesc then h:ApplyDescription(humDesc) end
+        end
+    end
+})
+
+-- ============================================================
+-- TAB: SERVER CHAOS
+-- ============================================================
+local ChaosTab = Window:AddTab({ Title = "Server Chaos", Icon = "zap" })
+ChaosTab:AddSection("Advanced Physics Exploits")
+
+ChaosTab:AddToggle("MassFling", {
+    Title = "Elite Mass Fling",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.Flinging = v
+        task.spawn(function()
+            while _G.Flinging do
+                local char, r = GetCharParts()
+                if r then
+                    r.AngularVelocity = Vector3.new(0, 99999, 0)
+                    r.Velocity = Vector3.new(math.random(-50,50), 0, math.random(-50,50))
+                    sethiddenproperty(LP, "SimulationRadius", 1000)
+                end
+                task.wait(0.05)
+            end
+        end)
+    end
+})
+
+ChaosTab:AddButton({
+    Title = "Void All Unanchored",
+    Callback = function()
+        if not _G.Authorized then return end
+        local char = LP.Character
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and not obj.Anchored and (not char or not obj:IsDescendantOf(char)) then
+                obj.CFrame = CFrame.new(0, -1000, 0)
+            end
+        end
+    end
+})
+
+ChaosTab:AddSection("Teleportation")
+ChaosTab:AddButton({
+    Title = "TP to Selected Player",
+    Callback = function()
+        if not _G.Authorized then return end
+        local target = game:GetService("Players"):FindFirstChild(TargetUser)
+        local _, r = GetCharParts()
+        if target and target.Character and r then
+            r.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
+        end
+    end
+})
+
+ChaosTab:AddToggle("KillAura", {
+    Title = "Auto-Damage Aura (20 Studs)",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.KA = v
+        while _G.KA do
+            for _, p in pairs(game:GetService("Players"):GetPlayers()) do
+                if p ~= LP and p.Character and p.Character:FindFirstChild("PrimaryPart") then
+                    local _, r = GetCharParts()
+                    if r then
+                        local dist = (p.Character.PrimaryPart.Position - r.Position).Magnitude
+                        if dist < 20 then
+                            local rem = game:GetService("ReplicatedStorage"):FindFirstChild("Hit", true) or game:GetService("ReplicatedStorage"):FindFirstChild("Damage", true)
+                            if rem then rem:FireServer(p.Character) end
+                        end
+                    end
+                end
+            end
+            task.wait(0.1)
+        end
+    end
+})
+
+Utilities:AddToggle("AntiAFK", {
+    Title = "Anti-AFK Kick",
+    Description = "Prevents idle disconnection (20min kick)",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.AntiAFK = v
+        if v then
+            -- Signals the game engine that a local user is active
+            local vu = game:GetService("VirtualUser")
+            AdminConnections["AntiAFK"] = LP.Idled:Connect(function()
+                if _G.AntiAFK then
+                    vu:CaptureController()
+                    vu:ClickButton2(Vector2.new())
+                end
+            end)
+            Fluent:Notify({Title = "Aetherius", Content = "Anti-AFK is now active."})
+        else
+            if AdminConnections["AntiAFK"] then
+                AdminConnections["AntiAFK"]:Disconnect()
+            end
+        end
+    end
+})
+
+
+-- ============================================================
 -- TAB 2 — COMBAT (AIMBOT)
 -- ============================================================
 local CombatTab = Window:AddTab({ Title = "Combat", Icon = "crosshair" })
@@ -1404,314 +1714,6 @@ LuckyTab:AddButton({
     end,
 })
 
--- ============================================================
--- TAB: ADMIN (DASHBOARD + ALL CATEGORIES)
--- ============================================================
-local LP = game:GetService("Players").LocalPlayer -- THIS LINE IS MISSING
-
-local AdminTab = Window:AddTab({ Title = "Admin", Icon = "shield" })
-
--- Utility function to fix your callback errors
-local function GetCharParts()
-    local c = LP.Character
-    if not c then return nil, nil, nil end
-    return c, c:FindFirstChild("HumanoidRootPart"), c:FindFirstChildOfClass("Humanoid")
-end
-
--- SECTION 1: THE DYNAMIC PROFILE CARD
-AdminTab:AddSection("Aetherius OS Interface")
-
--- 1. AVATAR DISPLAY
-AdminTab:AddImage("UserHeadshot", {
-    -- Added a fallback (or 1) just in case the player object is slow to load
-    Image = "rbxthumb://type=AvatarHeadShot&id=" .. (LP and LP.UserId or 1) .. "&w=150&h=150",
-    Size = {60, 60},
-    Rounding = 1 
-})
-
--- 2. THE DYNAMIC GREETING
-local GreetingLabel = AdminTab:AddParagraph({
-    Title   = "Initializing...", 
-    -- Added a fallback for DisplayName to prevent a crash
-    Content = "Operator: " .. (LP and LP.DisplayName or "User") .. "\nLicense: " .. (_G.Authorized and "Premium Gold" or "Guest Access")
-})
-
-
--- 3. THE DATA HUB
-local Dashboard = AdminTab:AddParagraph({ 
-    Title = "System Metrics", 
-    Content = "Ping: Fetching... | FPS: Fetching...\nTime: --:--:-- | Session: 00:00:00" 
-})
-
--- UPDATE LOOP
-task.spawn(function()
-    local StartTime = tick()
-    while true do
-        local currentHour = tonumber(os.date("%H"))
-        local greeting = "Good Evening"
-        
-        if currentHour >= 5 and currentHour < 12 then
-            greeting = "Good Morning"
-        elseif currentHour >= 12 and currentHour < 18 then
-            greeting = "Good Afternoon"
-        end
-        
-        GreetingLabel:SetTitle(greeting .. ", " .. LP.DisplayName)
-
-        local ping = tonumber(string.format("%.0f", LP:GetNetworkPing() * 1000))
-        local fps  = tonumber(string.format("%.0f", 1/game:GetService("RunService").RenderStepped:Wait()))
-        
-        local TimeString = os.date("%X")
-        local diff = tick() - StartTime
-        local hours = math.floor(diff / 3600)
-        local mins = math.floor((diff % 3600) / 60)
-        local secs = math.floor(diff % 60)
-        local Uptime = string.format("%02d:%02d:%02d", hours, mins, secs)
-        
-        Dashboard:SetContent(
-            "Latency: " .. ping .. "ms | Output: " .. fps .. " FPS\n" ..
-            "Local Clock: " .. TimeString .. " | Session: " .. Uptime
-        )
-        task.wait(1)
-    end
-end)
-
--- SECTION 2: MOVEMENT
-AdminTab:AddSection("Movement & Physics")
-
-AdminTab:AddToggle("AdminFly", {
-    Title = "Flight Mode (Bypasses Gravity)",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.Flying = v
-        local _, r, h = GetCharParts()
-        if v and r and h then
-            h.PlatformStand = true
-            local bp = Instance.new("BodyPosition", r)
-            bp.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-            bp.Position = r.Position
-            _G.FlyBP = bp
-        else
-            if _G.FlyBP then _G.FlyBP:Destroy() end
-            if h then h.PlatformStand = false end
-        end
-    end
-})
-
--- SECTION 3: CHARACTER
-AdminTab:AddSection("Character Mods")
-
-AdminTab:AddToggle("GodMode", {
-    Title = "Client God Mode",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.God = v
-        game:GetService("RunService").Heartbeat:Connect(function()
-            if _G.God and LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
-                LP.Character.Humanoid.Health = LP.Character.Humanoid.MaxHealth
-            end
-        end)
-    end
-})
-
-AdminTab:AddToggle("Invisibility", {
-    Title = "Invisibility (Client)",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        if LP.Character then
-            for _, p in pairs(LP.Character:GetDescendants()) do
-                if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = v and 1 or 0 end
-            end
-        end
-    end
-})
-
--- SECTION 4: VISUALS
-AdminTab:AddSection("Visual Effects")
-
-AdminTab:AddToggle("RainbowBody", {
-    Title = "Rainbow Character",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.Rainbow = v
-        task.spawn(function()
-            while _G.Rainbow do
-                if LP.Character then
-                    for _, p in pairs(LP.Character:GetDescendants()) do
-                        if p:IsA("BasePart") then p.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end
-                    end
-                end
-                task.wait()
-            end
-        end)
-    end
-})
-
-AdminTab:AddButton({
-    Title = "Neon Skin",
-    Callback = function()
-        if not _G.Authorized then return end
-        if LP.Character then
-            for _, p in pairs(LP.Character:GetDescendants()) do
-                if p:IsA("BasePart") then p.Material = Enum.Material.Neon end
-            end
-        end
-    end
-})
-
--- SECTION 5: WORLD
-AdminTab:AddSection("World Manipulation")
-
-AdminTab:AddSlider("TimeSlider", {
-    Title = "Time of Day", Min = 0, Max = 24, Default = 14,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        game:GetService("Lighting").TimeOfDay = string.format("%02d:00:00", v)
-    end
-})
-
-AdminTab:AddButton({
-    Title = "Full Bright",
-    Callback = function()
-        if not _G.Authorized then return end
-        game:GetService("Lighting").Brightness = 10
-        game:GetService("Lighting").OutdoorAmbient = Color3.new(1,1,1)
-    end
-})
-
--- ============================================================
--- TAB: STALK & MIMIC
--- ============================================================
-local MimicTab = Window:AddTab({ Title = "Stalk & Mimic", Icon = "user-search" })
-MimicTab:AddSection("Avatar Cloning")
-
-local TargetUser = ""
-MimicTab:AddInput("TargetInput", {
-    Title = "Target Username",
-    Default = "",
-    Placeholder = "Enter exact username...",
-    Callback = function(v) TargetUser = v end
-})
-
-MimicTab:AddButton({
-    Title = "Mimic Player Avatar",
-    Description = "Clones any player's look",
-    Callback = function()
-        if not _G.Authorized then return end
-        local Players = game:GetService("Players")
-        local success, targetId = pcall(function() return Players:GetUserIdFromNameAsync(TargetUser) end)
-        if success then
-            local _, _, h = GetCharParts()
-            local humDesc = Players:GetHumanoidDescriptionFromUserId(targetId)
-            if h and humDesc then h:ApplyDescription(humDesc) end
-        end
-    end
-})
-
--- ============================================================
--- TAB: SERVER CHAOS
--- ============================================================
-local ChaosTab = Window:AddTab({ Title = "Server Chaos", Icon = "zap" })
-ChaosTab:AddSection("Advanced Physics Exploits")
-
-ChaosTab:AddToggle("MassFling", {
-    Title = "Elite Mass Fling",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.Flinging = v
-        task.spawn(function()
-            while _G.Flinging do
-                local char, r = GetCharParts()
-                if r then
-                    r.AngularVelocity = Vector3.new(0, 99999, 0)
-                    r.Velocity = Vector3.new(math.random(-50,50), 0, math.random(-50,50))
-                    sethiddenproperty(LP, "SimulationRadius", 1000)
-                end
-                task.wait(0.05)
-            end
-        end)
-    end
-})
-
-ChaosTab:AddButton({
-    Title = "Void All Unanchored",
-    Callback = function()
-        if not _G.Authorized then return end
-        local char = LP.Character
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and not obj.Anchored and (not char or not obj:IsDescendantOf(char)) then
-                obj.CFrame = CFrame.new(0, -1000, 0)
-            end
-        end
-    end
-})
-
-ChaosTab:AddSection("Teleportation")
-ChaosTab:AddButton({
-    Title = "TP to Selected Player",
-    Callback = function()
-        if not _G.Authorized then return end
-        local target = game:GetService("Players"):FindFirstChild(TargetUser)
-        local _, r = GetCharParts()
-        if target and target.Character and r then
-            r.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
-        end
-    end
-})
-
-ChaosTab:AddToggle("KillAura", {
-    Title = "Auto-Damage Aura (20 Studs)",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.KA = v
-        while _G.KA do
-            for _, p in pairs(game:GetService("Players"):GetPlayers()) do
-                if p ~= LP and p.Character and p.Character:FindFirstChild("PrimaryPart") then
-                    local _, r = GetCharParts()
-                    if r then
-                        local dist = (p.Character.PrimaryPart.Position - r.Position).Magnitude
-                        if dist < 20 then
-                            local rem = game:GetService("ReplicatedStorage"):FindFirstChild("Hit", true) or game:GetService("ReplicatedStorage"):FindFirstChild("Damage", true)
-                            if rem then rem:FireServer(p.Character) end
-                        end
-                    end
-                end
-            end
-            task.wait(0.1)
-        end
-    end
-})
-
-Utilities:AddToggle("AntiAFK", {
-    Title = "Anti-AFK Kick",
-    Description = "Prevents idle disconnection (20min kick)",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.AntiAFK = v
-        if v then
-            -- Signals the game engine that a local user is active
-            local vu = game:GetService("VirtualUser")
-            AdminConnections["AntiAFK"] = LP.Idled:Connect(function()
-                if _G.AntiAFK then
-                    vu:CaptureController()
-                    vu:ClickButton2(Vector2.new())
-                end
-            end)
-            Fluent:Notify({Title = "Aetherius", Content = "Anti-AFK is now active."})
-        else
-            if AdminConnections["AntiAFK"] then
-                AdminConnections["AntiAFK"]:Disconnect()
-            end
-        end
-    end
-})
 
 
 -- ============================================================
