@@ -1404,608 +1404,153 @@ LuckyTab:AddButton({
     end,
 })
 
---[[
-    ╔══════════════════════════════════════════════════════════════╗
-    ║           AETHERIUS — CLIENT ADMIN PANEL v4.0               ║
-    ║           Aetherius Nexus | Client-Side Only                ║
-    ║           LocalScript → StarterPlayerScripts               ║
-    ╚══════════════════════════════════════════════════════════════╝
-    
-    
-    GAMEPASS ID: 1808462490 with your actual gamepass ID
-    for premium detection to work.
-    
-    NOTE: All commands are CLIENT-SIDE only. They affect only what
-    YOU see and how YOUR character behaves. Server-side things like
-    other players' health are not touched.
---]]
+-- ============================================================
+-- TAB: ADMIN (DASHBOARD + ALL CATEGORIES)
+-- ============================================================
+local AdminTab = Window:AddTab({ Title = "Admin", Icon = "shield" })
 
--- ============================================================
---  SERVICES
--- ============================================================
-local Players            = game:GetService("Players")
-local RunService         = game:GetService("RunService")
-local UserInputService   = game:GetService("UserInputService")
-local TweenService       = game:GetService("TweenService")
-local Lighting           = game:GetService("Lighting")
-local SoundService       = game:GetService("SoundService")
-local MarketplaceService = game:GetService("MarketplaceService")
-local HttpService        = game:GetService("HttpService")
-local StarterGui         = game:GetService("StarterGui")
+-- SECTION 1: THE PROFILE CARD (The "Main Page" design)
+AdminTab:AddSection("User Profile")
 
--- ============================================================
---  CORE REFERENCES
--- ============================================================
-local LP      = Players.LocalPlayer
-local Char    = LP.Character or LP.CharacterAdded:Wait()
-local Root    = Char:WaitForChild("HumanoidRootPart")
-local Hum     = Char:WaitForChild("Humanoid")
-local Camera  = workspace.CurrentCamera
-local Mouse   = LP:GetMouse()
+AdminTab:AddParagraph({
+    Title   = "Operator: " .. LP.DisplayName .. " (@" .. LP.Name .. ")",
+    Content = "Account Age: " .. LP.AccountAge .. " Days\nStatus: " .. (_G.Authorized and "Authenticated Premium" or "Guest Access")
+})
 
--- ============================================================
---  CONFIG
--- ============================================================
-local CONFIG = {
-    TOGGLE_KEY     = Enum.KeyCode.Semicolon,  -- ; to open/close
-    CMD_PREFIX     = ";",
-    PANEL_TITLE    = "AETHERIUS",
-    VERSION        = "4.0",
-    GAMEPASS_ID    = 1808462490,  -- ← Replace with your Gamepass ID (number)
-    THEME = {
-        BG          = Color3.fromRGB(8,  0,  12),
-        SURFACE     = Color3.fromRGB(18, 0,  24),
-        SURFACE2    = Color3.fromRGB(26, 0,  34),
-        BORDER      = Color3.fromRGB(80, 0, 100),
-        RED         = Color3.fromRGB(192, 57, 43),
-        RED_BRIGHT  = Color3.fromRGB(231, 76, 60),
-        PURPLE      = Color3.fromRGB(108, 43, 179),
-        PURPLE_LT   = Color3.fromRGB(155, 89, 182),
-        GOLD        = Color3.fromRGB(243, 156, 18),
-        TEXT        = Color3.fromRGB(232, 212, 240),
-        TEXT2       = Color3.fromRGB(180, 158, 200),
-        TEXT3       = Color3.fromRGB(120,  90, 140),
-        GREEN       = Color3.fromRGB(46, 204, 113),
-        CYAN        = Color3.fromRGB(0, 212, 255),
-    },
-}
+local PerfStats = AdminTab:AddParagraph({ Title = "System Metrics", Content = "Ping: Fetching... | FPS: Fetching..." })
 
--- ============================================================
---  STATE
--- ============================================================
-local State = {
-    PanelOpen      = false,
-    Flying         = false,
-    Noclip         = false,
-    GodMode        = false,
-    InfJump        = false,
-    AutoHeal       = false,
-    SpeedMult      = 1,
-    FlySpeed       = 60,
-    Frozen         = false,
-    AntiAFK        = false,
-    ESPEnabled     = false,
-    AutoFarm       = false,
-    SpinEnabled    = false,
-    RainbowBody    = false,
-    NeonAura       = false,
-    CurrentTab     = "movement",
-    Connections    = {},
-    ESPObjects     = {},
-    Premium        = false,
-    SpinSpeed      = 10,
-    FlyBody        = nil,
-    FlyGyro        = nil,
-    AutoFarmConn   = nil,
-}
-
--- ============================================================
---  PREMIUM CHECK
--- ============================================================
-local function CheckPremium()
-    if CONFIG.GAMEPASS_ID == 0 then
-        State.Premium = false
-        return
-    end
-    local ok, owns = pcall(function()
-        return MarketplaceService:UserOwnsGamePassAsync(LP.UserId, CONFIG.GAMEPASS_ID)
-    end)
-    State.Premium = ok and owns or false
-end
-pcall(CheckPremium)
-
--- ============================================================
---  UTILITY
--- ============================================================
-local function Notify(title, body, duration)
-    duration = duration or 3
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title    = "⬡ " .. title,
-            Text     = body,
-            Duration = duration,
-        })
-    end)
-end
-
-local function GetCharParts()
-    Char = LP.Character
-    if not Char then return nil, nil, nil end
-    Root = Char:FindFirstChild("HumanoidRootPart")
-    Hum  = Char:FindFirstChildOfClass("Humanoid")
-    return Char, Root, Hum
-end
-
-local function Disconnect(name)
-    if State.Connections[name] then
-        State.Connections[name]:Disconnect()
-        State.Connections[name] = nil
-    end
-end
-
-local function Lerp(a, b, t)
-    return a + (b - a) * t
-end
-
--- ============================================================
---  CHARACTER REFRESH
--- ============================================================
-LP.CharacterAdded:Connect(function(newChar)
-    Char = newChar
-    Root = newChar:WaitForChild("HumanoidRootPart")
-    Hum  = newChar:WaitForChild("Humanoid")
-    -- Re-apply persistent states
-    task.wait(0.5)
-    if State.GodMode then Hum.MaxHealth = math.huge; Hum.Health = math.huge end
-    if State.InfJump then
-        State.Connections["infjump"] = UserInputService.JumpRequest:Connect(function()
-            Hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        end)
-    end
-    if State.AntiAFK then
-        local vrs = LP:FindFirstChild("VirtualUser") or Instance.new("VirtualUser", LP)
-        vrs:Button2Down(Vector2.new(0,0), Camera.CFrame)
+task.spawn(function()
+    while true do
+        local ping = tonumber(string.format("%.0f", LP:GetNetworkPing() * 1000))
+        local fps  = tonumber(string.format("%.0f", 1/RunService.RenderStepped:Wait()))
+        PerfStats:SetContent("Ping: " .. ping .. "ms | FPS: " .. fps)
+        task.wait(1.5)
     end
 end)
 
--- ============================================================
---                    COMMAND IMPLEMENTATIONS
--- ============================================================
+-- SECTION 2: MOVEMENT (Speed, Fly, Noclip, etc.)
+AdminTab:AddSection("Movement & Physics")
 
--- ── MOVEMENT ──────────────────────────────────────────────
-
-local function CMD_Fly()
-    local c, r, h = GetCharParts()
-    if not r then return end
-    if State.Flying then
-        State.Flying = false
-        Disconnect("fly")
-        if State.FlyBody   then State.FlyBody:Destroy()   end
-        if State.FlyGyro   then State.FlyGyro:Destroy()   end
-        h.PlatformStand = false
-        Notify("Fly", "Disabled")
-        return
+AdminTab:AddToggle("AdminFly", {
+    Title = "Flight Mode (Bypasses Gravity)",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.Flying = v
+        local _, r, h = GetCharParts()
+        if v then
+            h.PlatformStand = true
+            local bp = Instance.new("BodyPosition", r)
+            bp.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+            bp.Position = r.Position
+            _G.FlyBP = bp
+            -- Add Fly logic here (WASD)
+        else
+            if _G.FlyBP then _G.FlyBP:Destroy() end
+            h.PlatformStand = false
+        end
     end
-    State.Flying = true
-    h.PlatformStand = true
+})
 
-    local bp = Instance.new("BodyPosition", r)
-    bp.MaxForce = Vector3.new(1e6,1e6,1e6)
-    bp.P = 5e4; bp.D = 2000
-    bp.Position = r.Position
-    State.FlyBody = bp
-
-    local bg = Instance.new("BodyGyro", r)
-    bg.MaxTorque = Vector3.new(1e6,1e6,1e6)
-    bg.CFrame = r.CFrame
-    State.FlyGyro = bg
-
-    State.Connections["fly"] = RunService.RenderStepped:Connect(function()
-        if not State.Flying then return end
-        local speed = State.FlySpeed
-        local cf = Camera.CFrame
-        local dir = Vector3.new()
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cf.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cf.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cf.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cf.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0,1,0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0,1,0) end
-        bp.Position = bp.Position + dir.Unit * (dir.Magnitude > 0 and speed * 0.05 or 0)
-        bg.CFrame = cf
-    end)
-    Notify("Fly", "Enabled — WASD + Space/Shift")
-end
-
-local function CMD_Noclip()
-    State.Noclip = not State.Noclip
-    if State.Noclip then
-        State.Connections["noclip"] = RunService.Stepped:Connect(function()
-            if LP.Character then
-                for _, p in ipairs(LP.Character:GetDescendants()) do
-                    if p:IsA("BasePart") then
-                        p.CanCollide = false
-                    end
-                end
-            end
-        end)
-        Notify("NoClip", "Enabled — walk through walls")
-    else
-        Disconnect("noclip")
-        Notify("NoClip", "Disabled")
-    end
-end
-
-local function CMD_SetSpeed(mult)
-    local _, _, h = GetCharParts()
-    if not h then return end
-    State.SpeedMult = mult
-    h.WalkSpeed = 16 * mult
-    Notify("Speed", "x" .. mult .. " (" .. (16 * mult) .. " studs/s)")
-end
-
-local function CMD_InfJump()
-    State.InfJump = not State.InfJump
-    if State.InfJump then
-        State.Connections["infjump"] = UserInputService.JumpRequest:Connect(function()
-            local _, _, h = GetCharParts()
-            if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
-        end)
-        Notify("Infinite Jump", "Enabled")
-    else
-        Disconnect("infjump")
-        Notify("Infinite Jump", "Disabled")
-    end
-end
-
-local function CMD_MoonGravity()
-    workspace.Gravity = 20
-    Notify("Moon Gravity", "Gravity set to 20")
-end
-
-local function CMD_ZeroGravity()
-    workspace.Gravity = 0
-    Notify("Zero Gravity", "Gravity set to 0")
-end
-
-local function CMD_NormalGravity()
-    workspace.Gravity = 196.2
-    Notify("Normal Gravity", "Restored")
-end
-
-local function CMD_SuperJump(power)
-    local _, _, h = GetCharParts()
-    if not h then return end
-    h.JumpPower = power or 200
-    Notify("Jump Power", "Set to " .. (power or 200))
-end
-
-local function CMD_Teleport(pos)
-    local _, r = GetCharParts()
-    if r then r.CFrame = CFrame.new(pos) end
-end
-
-local function CMD_BunnyHop()
-    State.Connections["bhop"] = UserInputService.JumpRequest:Connect(function()
-        task.wait(0.05)
+AdminTab:AddSlider("SpeedSlider", {
+    Title = "WalkSpeed", Min = 16, Max = 500, Default = 16,
+    Callback = function(v)
+        if not _G.Authorized then return end
         local _, _, h = GetCharParts()
-        if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
-    end)
-    Notify("BunnyHop", "Active — keep jumping!")
-end
+        if h then h.WalkSpeed = v end
+    end
+})
 
-local function CMD_Dash()
-    local _, r, h = GetCharParts()
-    if not r or not h then return end
-    local cf = Camera.CFrame
-    local impulse = cf.LookVector * 120
-    local bv = Instance.new("BodyVelocity", r)
-    bv.Velocity = impulse; bv.MaxForce = Vector3.new(1e5,1e5,1e5)
-    game:GetService("Debris"):AddItem(bv, 0.15)
-    Notify("Dash", "Forward dash!")
-end
-
--- ── CHARACTER ─────────────────────────────────────────────
-
-local function CMD_GodMode()
-    State.GodMode = not State.GodMode
-    local _, _, h = GetCharParts()
-    if not h then return end
-    if State.GodMode then
-        h.MaxHealth = math.huge
-        h.Health    = math.huge
-        State.Connections["godmode"] = RunService.Heartbeat:Connect(function()
-            local _, _, hh = GetCharParts()
-            if hh then hh.Health = math.huge end
+AdminTab:AddToggle("InfJump", {
+    Title = "Infinite Jump",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.InfJ = v
+        UserInputService.JumpRequest:Connect(function()
+            if _G.InfJ then LP.Character.Humanoid:ChangeState("Jumping") end
         end)
-        Notify("God Mode", "ENABLED — immortal")
-    else
-        h.MaxHealth = 100
-        h.Health    = 100
-        Disconnect("godmode")
-        Notify("God Mode", "Disabled")
     end
-end
+})
 
-local function CMD_Scale(s)
-    local c = LP.Character
-    if not c then return end
-    for _, desc in ipairs(c:GetDescendants()) do
-        if desc:IsA("BasePart") then
-            desc.Size = desc.Size * s
-        end
-    end
-    Notify("Scale", "Applied x" .. s)
-end
+-- SECTION 3: CHARACTER & SURVIVABILITY
+AdminTab:AddSection("Character Mods")
 
-local function CMD_Spin()
-    State.SpinEnabled = not State.SpinEnabled
-    if State.SpinEnabled then
-        State.Connections["spin"] = RunService.Heartbeat:Connect(function()
-            local _, r = GetCharParts()
-            if r then
-                r.CFrame = r.CFrame * CFrame.Angles(0, math.rad(State.SpinSpeed), 0)
+AdminTab:AddToggle("GodMode", {
+    Title = "Client God Mode",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.God = v
+        RunService.Heartbeat:Connect(function()
+            if _G.God and LP.Character:FindFirstChildOfClass("Humanoid") then
+                LP.Character.Humanoid.Health = LP.Character.Humanoid.MaxHealth
             end
         end)
-        Notify("Spin", "Spinning at speed " .. State.SpinSpeed)
-    else
-        Disconnect("spin")
-        Notify("Spin", "Stopped")
     end
-end
+})
 
-local function CMD_Freeze()
-    State.Frozen = not State.Frozen
-    local _, r, h = GetCharParts()
-    if not r then return end
-    if State.Frozen then
-        r.Anchored = true
-        Notify("Freeze", "You are frozen in place")
-    else
-        r.Anchored = false
-        Notify("Freeze", "Unfrozen")
-    end
-end
-
-local function CMD_Ragdoll()
-    local c, _, h = GetCharParts()
-    if not c or not h then return end
-    h:ChangeState(Enum.HumanoidStateType.Ragdoll)
-    Notify("Ragdoll", "Ragdolled!")
-end
-
-local function CMD_Invisible()
-    local c = LP.Character
-    if not c then return end
-    for _, p in ipairs(c:GetDescendants()) do
-        if p:IsA("BasePart") or p:IsA("Decal") then
-            p.Transparency = 1
+AdminTab:AddToggle("Invisibility", {
+    Title = "Invisibility (Client)",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        for _, p in pairs(LP.Character:GetDescendants()) do
+            if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = v and 1 or 0 end
         end
     end
-    Notify("Invisible", "You are now invisible (client-side)")
-end
+})
 
-local function CMD_Visible()
-    local c = LP.Character
-    if not c then return end
-    for _, p in ipairs(c:GetDescendants()) do
-        if p:IsA("BasePart") then
-            p.Transparency = 0
-        elseif p:IsA("Decal") then
-            p.Transparency = 0
-        end
-    end
-    Notify("Visible", "Restored visibility")
-end
+-- SECTION 4: VISUALS (The "Cool Things")
+AdminTab:AddSection("Visual Effects")
 
--- ── VISUAL FX ─────────────────────────────────────────────
-
-local function CMD_RainbowBody()
-    State.RainbowBody = not State.RainbowBody
-    if State.RainbowBody then
-        State.Connections["rainbow"] = RunService.Heartbeat:Connect(function()
-            local c = LP.Character
-            if not c then return end
-            local t = tick()
-            for _, p in ipairs(c:GetDescendants()) do
-                if p:IsA("BasePart") then
-                    p.Color = Color3.fromHSV((t * 0.3 + p.Position.X * 0.01) % 1, 1, 1)
+AdminTab:AddToggle("RainbowBody", {
+    Title = "Rainbow Character",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.Rainbow = v
+        task.spawn(function()
+            while _G.Rainbow do
+                for _, p in pairs(LP.Character:GetDescendants()) do
+                    if p:IsA("BasePart") then p.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end
                 end
+                task.wait()
             end
         end)
-        Notify("Rainbow Body", "Enabled")
-    else
-        Disconnect("rainbow")
-        Notify("Rainbow Body", "Disabled")
     end
-end
+})
 
-local function CMD_NeonAura()
-    State.NeonAura = not State.NeonAura
-    local c = LP.Character
-    if not c then return end
-    local r = c:FindFirstChild("HumanoidRootPart")
-    if not r then return end
-    if State.NeonAura then
-        local sel = Instance.new("SelectionBox", workspace)
-        sel.Adornee = c
-        sel.Color3 = CONFIG.THEME.PURPLE_LT
-        sel.LineThickness = 0.08
-        sel.Name = "_AethNeonAura"
-        Notify("Neon Aura", "Enabled")
-    else
-        local found = workspace:FindFirstChild("_AethNeonAura")
-        if found then found:Destroy() end
-        Notify("Neon Aura", "Disabled")
-    end
-end
-
-local function CMD_FireEffect()
-    local c = LP.Character
-    if not c then return end
-    local r = c:FindFirstChild("HumanoidRootPart")
-    if not r then return end
-    local existing = r:FindFirstChild("_AethFire")
-    if existing then existing:Destroy(); Notify("Fire FX", "Removed"); return end
-    local fire = Instance.new("Fire", r)
-    fire.Name = "_AethFire"
-    fire.Size = 6; fire.Heat = 12
-    fire.Color = Color3.fromRGB(192,57,43)
-    fire.SecondaryColor = Color3.fromRGB(108,43,179)
-    Notify("Fire FX", "Blazing!")
-end
-
-local function CMD_SparkleEffect()
-    local c = LP.Character
-    if not c then return end
-    local r = c:FindFirstChild("HumanoidRootPart")
-    if not r then return end
-    local existing = r:FindFirstChild("_AethSparkle")
-    if existing then existing:Destroy(); Notify("Sparkle FX", "Removed"); return end
-    local sp = Instance.new("Sparkles", r)
-    sp.Name = "_AethSparkle"
-    sp.SparkleColor = CONFIG.THEME.PURPLE_LT
-    Notify("Sparkle FX", "Enabled")
-end
-
-local function CMD_SmokeAura()
-    local c = LP.Character
-    if not c then return end
-    local r = c:FindFirstChild("HumanoidRootPart")
-    if not r then return end
-    local existing = r:FindFirstChild("_AethSmoke")
-    if existing then existing:Destroy(); Notify("Smoke Aura", "Removed"); return end
-    local s = Instance.new("Smoke", r)
-    s.Name = "_AethSmoke"
-    s.Size = 4; s.Opacity = 0.4
-    s.Color = Color3.fromRGB(50,0,70)
-    Notify("Smoke Aura", "Enabled")
-end
-
-local function CMD_GlowSkin(color)
-    local c = LP.Character
-    if not c then return end
-    for _, p in ipairs(c:GetDescendants()) do
-        if p:IsA("BasePart") then
-            p.Material = Enum.Material.Neon
-            p.Color = color or CONFIG.THEME.PURPLE_LT
+AdminTab:AddButton({
+    Title = "Neon Skin",
+    Callback = function()
+        if not _G.Authorized then return end
+        for _, p in pairs(LP.Character:GetDescendants()) do
+            if p:IsA("BasePart") then p.Material = Enum.Material.Neon end
         end
     end
-    Notify("Glow Skin", "Neon material applied")
-end
+})
 
-local function CMD_NormalSkin()
-    local c = LP.Character
-    if not c then return end
-    for _, p in ipairs(c:GetDescendants()) do
-        if p:IsA("BasePart") then
-            p.Material = Enum.Material.SmoothPlastic
-        end
+-- SECTION 5: WORLD & SERVER
+AdminTab:AddSection("World Manipulation")
+
+AdminTab:AddSlider("TimeSlider", {
+    Title = "Time of Day", Min = 0, Max = 24, Default = 14,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        game:GetService("Lighting").TimeOfDay = string.format("%02d:00:00", v)
     end
-    Notify("Skin Reset", "Normal material restored")
-end
+})
 
-local function CMD_GlitchEffect()
-    State.Connections["glitch"] = RunService.Heartbeat:Connect(function()
-        local _, r = GetCharParts()
-        if r then
-            r.CFrame = r.CFrame * CFrame.new(
-                math.random(-10,10)/30,
-                math.random(-5,5)/30,
-                math.random(-10,10)/30
-            )
-        end
-    end)
-    task.delay(3, function()
-        Disconnect("glitch")
-        Notify("Glitch FX", "Effect ended")
-    end)
-    Notify("Glitch FX", "3 seconds of chaos!")
-end
+AdminTab:AddButton({
+    Title = "Full Bright",
+    Callback = function()
+        if not _G.Authorized then return end
+        game:GetService("Lighting").Brightness = 10
+        game:GetService("Lighting").OutdoorAmbient = Color3.new(1,1,1)
+    end
+})
 
--- ── WORLD / ENVIRONMENT ───────────────────────────────────
-
-local function CMD_TimeOfDay(hour)
-    Lighting.TimeOfDay = string.format("%02d:00:00", hour)
-    Notify("Time", "Set to " .. hour .. ":00")
-end
-
-local function CMD_Ambient(color)
-    Lighting.Ambient = color
-    Lighting.OutdoorAmbient = color
-end
-
-local function CMD_Brightness(val)
-    Lighting.Brightness = val
-    Notify("Brightness", "Set to " .. val)
-end
-
-local function CMD_FogRange(near, far)
-    Lighting.FogStart = near
-    Lighting.FogEnd   = far
-    Notify("Fog", "near=" .. near .. " far=" .. far)
-end
-
-local function CMD_ClearFog()
-    Lighting.FogEnd = 100000
-    Lighting.FogStart = 99999
-    Notify("Fog", "Cleared")
-end
-
-local function CMD_NightVision()
-    Lighting.Brightness = 3
-    Lighting.Ambient = Color3.fromRGB(100, 200, 100)
-    Lighting.OutdoorAmbient = Color3.fromRGB(80, 180, 80)
-    Notify("Night Vision", "Green vision enabled")
-end
-
-local function CMD_InvertColors()
-    local cc = Instance.new("ColorCorrectionEffect", Lighting)
-    cc.Name = "_AethInvert"
-    cc.Brightness = -1
-    cc.Saturation = -2
-    cc.TintColor = Color3.fromRGB(255,255,255)
-    task.delay(5, function() cc:Destroy() end)
-    Notify("Invert Colors", "5 seconds")
-end
-
-local function CMD_BloodMoon()
-    Lighting.TimeOfDay = "00:00:00"
-    Lighting.Ambient = Color3.fromRGB(80,0,0)
-    Lighting.OutdoorAmbient = Color3.fromRGB(60,0,0)
-    Lighting.FogColor = Color3.fromRGB(100,0,0)
-    Lighting.FogEnd = 300
-    Lighting.FogStart = 50
-    Notify("Blood Moon", "The sky bleeds...")
-end
-
-local function CMD_ResetLighting()
-    Lighting.TimeOfDay = "14:00:00"
-    Lighting.Brightness = 2
-    Lighting.Ambient = Color3.fromRGB(70,70,70)
-    Lighting.OutdoorAmbient = Color3.fromRGB(128,128,128)
-    Lighting.FogEnd = 100000
-    Lighting.FogStart = 99999
-    Notify("Lighting", "Reset to default")
-end
-
--- ── CAMERA ────────────────────────────────────────────────
-
-local function CMD_FreeCam()
-    local cam = workspace.CurrentCamera
-    cam.CameraType = Enum.CameraType.Scriptable
-    local pos = cam.CFrame
-    State.Connections["freecam"] = RunService.RenderStepped:Connect(function()
-        local speed = 1
-        local cf = cam.CFrame
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then pos = pos * CFrame.new(0,0,-speed) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then pos = pos * CFrame.new(0,0,speed) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then pos = pos * CFrame.new(-speed,0,0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then pos = pos * CFrame.new(speed,0,0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.E) then pos = pos * CFrame.new(0,speed,0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Q) then pos = pos * CFrame.new(0,-speed,0) end
-        cam.CFrame = pos
-    end)
 
 -- ============================================================
 -- AETHERIUS NEXUS - GLOBAL SETTINGS & SHIELD SYSTEM
