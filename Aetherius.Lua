@@ -200,25 +200,19 @@ LicenseTab:AddButton({
 -- ============================================================
 -- TAB: ADMIN (DASHBOARD + ALL CATEGORIES)
 -- ============================================================
-local LP = game:GetService("Players").LocalPlayer -- THIS LINE IS MISSING
+local LP = game:GetService("Players").LocalPlayer 
+local RunService = game:GetService("RunService")
 
 local AdminTab = Window:AddTab({ Title = "Admin", Icon = "shield" })
-
--- Utility function to fix your callback errors
-local function GetCharParts()
-    local c = LP.Character
-    if not c then return nil, nil, nil end
-    return c, c:FindFirstChild("HumanoidRootPart"), c:FindFirstChildOfClass("Humanoid")
-end
 
 -- SECTION 1: THE DYNAMIC PROFILE CARD
 AdminTab:AddSection("Aetherius OS Interface")
 
--- 1. THE DYNAMIC GREETING
+-- 1. THE DYNAMIC GREETING (Fixed Commas & Logic)
 local GreetingLabel = AdminTab:AddParagraph({
     Title   = "Initializing...", 
-    -- Added a fallback for DisplayName to prevent a crash
-    Content = "Operator: " .. (LP and LP.DisplayName or "User") .. "\nLicense: " .. (_G.Authorized and "Premium Gold" or "Guest Access")
+    Content = "Operator: " .. (LP and LP.DisplayName or "User") .. 
+              "\nLicense: " .. (_G.Authorized and "Premium Gold" or "Guest Access")
 })
 
 -- 2. THE DATA HUB
@@ -227,34 +221,27 @@ local Dashboard = AdminTab:AddParagraph({
     Content = "Ping: Fetching... | FPS: Fetching...\nTime: --:--:-- | Session: 00:00:00" 
 })
 
--- UPDATE LOOP
+-- UPDATE LOOP (Added Safety Checks)
 task.spawn(function()
     local StartTime = tick()
     while true do
-        local currentHour = tonumber(os.date("%H"))
-        local greeting = "Good Evening"
+        if not LP or not GreetingLabel then task.wait(1) continue end
         
-        if currentHour >= 5 and currentHour < 12 then
-            greeting = "Good Morning"
-        elseif currentHour >= 12 and currentHour < 18 then
-            greeting = "Good Afternoon"
-        end
+        local currentHour = tonumber(os.date("%H"))
+        local greeting = (currentHour < 12 and "Good Morning") or (currentHour < 18 and "Good Afternoon") or "Good Evening"
         
         GreetingLabel:SetTitle(greeting .. ", " .. LP.DisplayName)
 
-        local ping = tonumber(string.format("%.0f", LP:GetNetworkPing() * 1000))
-        local fps  = tonumber(string.format("%.0f", 1/game:GetService("RunService").RenderStepped:Wait()))
+        -- Safely get Ping and FPS
+        local ping = math.floor(LP:GetNetworkPing() * 1000)
+        local fps = math.floor(1/RunService.RenderStepped:Wait())
         
-        local TimeString = os.date("%X")
         local diff = tick() - StartTime
-        local hours = math.floor(diff / 3600)
-        local mins = math.floor((diff % 3600) / 60)
-        local secs = math.floor(diff % 60)
-        local Uptime = string.format("%02d:%02d:%02d", hours, mins, secs)
+        local Uptime = string.format("%02d:%02d:%02d", math.floor(diff/3600), math.floor((diff%3600)/60), math.floor(diff%60))
         
         Dashboard:SetContent(
             "Latency: " .. ping .. "ms | Output: " .. fps .. " FPS\n" ..
-            "Local Clock: " .. TimeString .. " | Session: " .. Uptime
+            "Local Clock: " .. os.date("%X") .. " | Session: " .. Uptime
         )
         task.wait(1)
     end
