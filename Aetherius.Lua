@@ -1407,26 +1407,71 @@ LuckyTab:AddButton({
 -- ============================================================
 -- TAB: ADMIN (DASHBOARD + ALL CATEGORIES)
 -- ============================================================
+-- TAB: ADMIN (DASHBOARD + ALL CATEGORIES)
+-- ============================================================
 local AdminTab = Window:AddTab({ Title = "Admin", Icon = "shield" })
 
--- SECTION 1: THE PROFILE CARD (The "Main Page" design)
-AdminTab:AddSection("User Profile")
+-- SECTION 1: THE DYNAMIC PROFILE CARD
+AdminTab:AddSection("Aetherius OS Interface")
 
-AdminTab:AddParagraph({
-    Title   = "Operator: " .. LP.DisplayName .. " (@" .. LP.Name .. ")",
-    Content = "Account Age: " .. LP.AccountAge .. " Days\nStatus: " .. (_G.Authorized and "Authenticated Premium" or "Guest Access")
+-- 1. AVATAR DISPLAY (This pulls your actual headshot)
+AdminTab:AddImage("UserHeadshot", {
+    Image = "rbxthumb://type=AvatarHeadShot&id=" .. LP.UserId .. "&w=150&h=150",
+    Size = UDim2.new(0, 60, 0, 60),
+    Rounding = 1 -- Makes the avatar a circular frame
 })
 
-local PerfStats = AdminTab:AddParagraph({ Title = "System Metrics", Content = "Ping: Fetching... | FPS: Fetching..." })
+-- 2. THE DYNAMIC GREETING (JARVIS Style)
+local GreetingLabel = AdminTab:AddParagraph({
+    Title   = "Initializing...", -- Will be updated by loop
+    Content = "Operator: " .. LP.DisplayName .. "\nLicense: " .. (_G.Authorized and "Premium Gold" or "Guest Access")
+})
 
+-- 3. THE DATA HUB
+local Dashboard = AdminTab:AddParagraph({ 
+    Title = "System Metrics", 
+    Content = "Ping: Fetching... | FPS: Fetching...\nTime: --:--:-- | Session: 00:00:00" 
+})
+
+-- UPDATE LOOP: GREETINGS, CLOCK, AND PERFORMANCE
 task.spawn(function()
+    local StartTime = tick()
+    
     while true do
+        -- A. TIME & GREETING LOGIC
+        local currentHour = tonumber(os.date("%H"))
+        local greeting = "Good Evening"
+        
+        if currentHour >= 5 and currentHour < 12 then
+            greeting = "Good Morning"
+        elseif currentHour >= 12 and currentHour < 18 then
+            greeting = "Good Afternoon"
+        end
+        
+        GreetingLabel:SetTitle(greeting .. ", " .. LP.DisplayName)
+
+        -- B. PERFORMANCE METRICS
         local ping = tonumber(string.format("%.0f", LP:GetNetworkPing() * 1000))
         local fps  = tonumber(string.format("%.0f", 1/RunService.RenderStepped:Wait()))
-        PerfStats:SetContent("Ping: " .. ping .. "ms | FPS: " .. fps)
-        task.wait(1.5)
+        
+        -- C. CLOCK & UPTIME
+        local TimeString = os.date("%X")
+        local diff = tick() - StartTime
+        local hours = math.floor(diff / 3600)
+        local mins = math.floor((diff % 3600) / 60)
+        local secs = math.floor(diff % 60)
+        local Uptime = string.format("%02d:%02d:%02d", hours, mins, secs)
+        
+        -- D. PUSH TO UI
+        Dashboard:SetContent(
+            "Latency: " .. ping .. "ms | Output: " .. fps .. " FPS\n" ..
+            "Local Clock: " .. TimeString .. " | Session: " .. Uptime
+        )
+        
+        task.wait(1)
     end
 end)
+
 
 -- SECTION 2: MOVEMENT (Speed, Fly, Noclip, etc.)
 AdminTab:AddSection("Movement & Physics")
