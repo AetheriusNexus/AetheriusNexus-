@@ -481,32 +481,6 @@ ChaosTab:AddToggle("KillAura", {
     end
 })
 
-Utilities:AddToggle("AntiAFK", {
-    Title = "Anti-AFK Kick",
-    Description = "Prevents idle disconnection (20min kick)",
-    Default = false,
-    Callback = function(v)
-        if not _G.Authorized then return end
-        _G.AntiAFK = v
-        if v then
-            -- Signals the game engine that a local user is active
-            local vu = game:GetService("VirtualUser")
-            AdminConnections["AntiAFK"] = LP.Idled:Connect(function()
-                if _G.AntiAFK then
-                    vu:CaptureController()
-                    vu:ClickButton2(Vector2.new())
-                end
-            end)
-            Fluent:Notify({Title = "Aetherius", Content = "Anti-AFK is now active."})
-        else
-            if AdminConnections["AntiAFK"] then
-                AdminConnections["AntiAFK"]:Disconnect()
-            end
-        end
-    end
-})
-
-
 -- ============================================================
 -- TAB 2 — COMBAT (AIMBOT)
 -- ============================================================
