@@ -1407,6 +1407,8 @@ LuckyTab:AddButton({
 -- ============================================================
 -- TAB: ADMIN (DASHBOARD + ALL CATEGORIES)
 -- ============================================================
+local LP = game:GetService("Players").LocalPlayer -- THIS LINE IS MISSING
+
 local AdminTab = Window:AddTab({ Title = "Admin", Icon = "shield" })
 
 -- Utility function to fix your callback errors
@@ -1421,7 +1423,8 @@ AdminTab:AddSection("Aetherius OS Interface")
 
 -- 1. AVATAR DISPLAY
 AdminTab:AddImage("UserHeadshot", {
-    Image = "rbxthumb://type=AvatarHeadShot&id=" .. LP.UserId .. "&w=150&h=150",
+    -- Added a fallback (or 1) just in case the player object is slow to load
+    Image = "rbxthumb://type=AvatarHeadShot&id=" .. (LP and LP.UserId or 1) .. "&w=150&h=150",
     Size = {60, 60},
     Rounding = 1 
 })
@@ -1429,8 +1432,10 @@ AdminTab:AddImage("UserHeadshot", {
 -- 2. THE DYNAMIC GREETING
 local GreetingLabel = AdminTab:AddParagraph({
     Title   = "Initializing...", 
-    Content = "Operator: " .. LP.DisplayName .. "\nLicense: " .. (_G.Authorized and "Premium Gold" or "Guest Access")
+    -- Added a fallback for DisplayName to prevent a crash
+    Content = "Operator: " .. (LP and LP.DisplayName or "User") .. "\nLicense: " .. (_G.Authorized and "Premium Gold" or "Guest Access")
 })
+
 
 -- 3. THE DATA HUB
 local Dashboard = AdminTab:AddParagraph({ 
