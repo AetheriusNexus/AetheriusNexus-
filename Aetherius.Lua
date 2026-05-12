@@ -1422,7 +1422,7 @@ AdminTab:AddSection("Aetherius OS Interface")
 -- 1. AVATAR DISPLAY
 AdminTab:AddImage("UserHeadshot", {
     Image = "rbxthumb://type=AvatarHeadShot&id=" .. LP.UserId .. "&w=150&h=150",
-    Size = Vector2.new(60, 60),
+    Size = {60, 60},
     Rounding = 1 
 })
 
