@@ -214,23 +214,14 @@ end
 -- SECTION 1: THE DYNAMIC PROFILE CARD
 AdminTab:AddSection("Aetherius OS Interface")
 
--- 1. AVATAR DISPLAY
-AdminTab:AddImage("UserHeadshot", {
-    -- Added a fallback (or 1) just in case the player object is slow to load
-    Image = "rbxthumb://type=AvatarHeadShot&id=" .. (LP and LP.UserId or 1) .. "&w=150&h=150",
-    Size = {60, 60},
-    Rounding = 1 
-})
-
--- 2. THE DYNAMIC GREETING
+-- 1. THE DYNAMIC GREETING
 local GreetingLabel = AdminTab:AddParagraph({
     Title   = "Initializing...", 
     -- Added a fallback for DisplayName to prevent a crash
     Content = "Operator: " .. (LP and LP.DisplayName or "User") .. "\nLicense: " .. (_G.Authorized and "Premium Gold" or "Guest Access")
 })
 
-
--- 3. THE DATA HUB
+-- 2. THE DATA HUB
 local Dashboard = AdminTab:AddParagraph({ 
     Title = "System Metrics", 
     Content = "Ping: Fetching... | FPS: Fetching...\nTime: --:--:-- | Session: 00:00:00" 
