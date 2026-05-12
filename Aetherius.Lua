@@ -1550,6 +1550,144 @@ AdminTab:AddButton({
         game:GetService("Lighting").OutdoorAmbient = Color3.new(1,1,1)
     end
 })
+-- ============================================================
+-- TAB: STALK & MIMIC (IDENTITY STEALING)
+-- ============================================================
+local MimicTab = Window:AddTab({ Title = "Stalk & Mimic", Icon = "user-search" })
+
+MimicTab:AddSection("Avatar Cloning")
+
+local TargetUser = ""
+MimicTab:AddInput("TargetInput", {
+    Title = "Target Username",
+    Default = "",
+    Placeholder = "Enter exact username...",
+    Callback = function(v) TargetUser = v end
+})
+
+MimicTab:AddButton({
+    Title = "Mimic Player Avatar",
+    Description = "Clones any player's look using HumanoidDescription (Server-Visible in most games)",
+    Callback = function()
+        if not _G.Authorized then return end
+        local success, targetId = pcall(function() return Players:GetUserIdFromNameAsync(TargetUser) end)
+        
+        if success then
+            local _, _, h = GetCharParts()
+            local humDesc = Players:GetHumanoidDescriptionFromUserId(targetId)
+            if h and humDesc then
+                h:ApplyDescription(humDesc)
+                Fluent:Notify({Title = "Mimic Success", Content = "Identity stolen from " .. TargetUser})
+            end
+        else
+            Fluent:Notify({Title = "Error", Content = "Username not found."})
+        end
+    end
+})
+
+-- ============================================================
+-- TAB: SERVER CHAOS (PHYSICS & EXPLOITS)
+-- ============================================================
+local ChaosTab = Window:AddTab({ Title = "Server Chaos", Icon = "zap" })
+
+ChaosTab:AddSection("Advanced Physics Exploits")
+
+ChaosTab:AddToggle("MassFling", {
+    Title = "Elite Mass Fling",
+    Description = "High-velocity rotation (Network Ownership abuse)",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.Flinging = v
+        task.spawn(function()
+            local char, r, h = GetCharParts()
+            while _G.Flinging do
+                -- Velocity spiking to glitch collision boxes
+                r.AngularVelocity = Vector3.new(0, 99999, 0)
+                r.Velocity = Vector3.new(math.random(-50,50), 0, math.random(-50,50))
+                -- Maintain ownership
+                sethiddenproperty(LP, "SimulationRadius", 1000)
+                task.wait(0.05)
+            end
+            r.AngularVelocity = Vector3.new(0,0,0)
+        end)
+    end
+})
+
+ChaosTab:AddButton({
+    Title = "Void All Unanchored",
+    Description = "Instantly teleports every loose object to the void",
+    Callback = function()
+        if not _G.Authorized then return end
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and not obj.Anchored and not obj:IsDescendantOf(char) then
+                obj.CFrame = CFrame.new(0, -1000, 0)
+            end
+        end
+    end
+})
+
+ChaosTab:AddSection("Teleportation Exploits")
+
+ChaosTab:AddButton({
+    Title = "TP to Selected Player",
+    Callback = function()
+        if not _G.Authorized then return end
+        local target = Players:FindFirstChild(TargetUser)
+        local _, r = GetCharParts()
+        if target and target.Character and r then
+            r.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
+        end
+    end
+})
+
+ChaosTab:AddToggle("KillAura", {
+    Title = "Auto-Damage Aura (20 Studs)",
+    Description = "Scans for 'Hit' remotes and fires them on enemies",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.KA = v
+        while _G.KA do
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LP and p.Character then
+                    local dist = (p.Character.PrimaryPart.Position - LP.Character.PrimaryPart.Position).Magnitude
+                    if dist < 20 then
+                        local rem = game:GetService("ReplicatedStorage"):FindFirstChild("Hit", true) or 
+                                    game:GetService("ReplicatedStorage"):FindFirstChild("Damage", true)
+                        if rem then rem:FireServer(p.Character) end
+                    end
+                end
+            end
+            task.wait(0.1)
+        end
+    end
+})
+
+Utilities:AddToggle("AntiAFK", {
+    Title = "Anti-AFK Kick",
+    Description = "Prevents idle disconnection (20min kick)",
+    Default = false,
+    Callback = function(v)
+        if not _G.Authorized then return end
+        _G.AntiAFK = v
+        if v then
+            -- Signals the game engine that a local user is active
+            local vu = game:GetService("VirtualUser")
+            AdminConnections["AntiAFK"] = LP.Idled:Connect(function()
+                if _G.AntiAFK then
+                    vu:CaptureController()
+                    vu:ClickButton2(Vector2.new())
+                end
+            end)
+            Fluent:Notify({Title = "Aetherius", Content = "Anti-AFK is now active."})
+        else
+            if AdminConnections["AntiAFK"] then
+                AdminConnections["AntiAFK"]:Disconnect()
+            end
+        end
+    end
+})
 
 
 -- ============================================================
